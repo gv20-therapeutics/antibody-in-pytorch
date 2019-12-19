@@ -9,7 +9,14 @@ Recently, more people are realizing the use of machine learning, especially deep
 1. Mason et al., Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
 2. Wollacott et al., Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
 
+## Related works
+
+1. Davidsen et al., Deep generative models for T cell receptor protein sequences. [https://elifesciences.org/articles/46935]
+2. Hu et al., ACME: pan-specific peptide–MHC class I binding prediction through attention-based deep neural networks. [https://academic.oup.com/bioinformatics/article-abstract/35/23/4946/5497763]
+
+
 ## Contributors (alphabetical order)
-* [Suraj Gattani](https://github.com/suraj-gattani)
+
 * [Qingyang Ding](https://github.com/qid12)
+* [Suraj Gattani](https://github.com/suraj-gattani)
 * [Xihao Hu](https://github.com/huxihao)
