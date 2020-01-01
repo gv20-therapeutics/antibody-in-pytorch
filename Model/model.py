@@ -5,20 +5,33 @@ import loader
 import os
 import numpy as np
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, roc_auc_score, accuracy_score
+import json
 
 class Model(nn.Module):
 
-  def __init__(self,epoch=50,batch_size=16,learning_rate=0.01,*args, **kwargs):
+  def __init__(self, epoch=50, batch_size=16, learning_rate=0.01, *args, **kwargs):
     super(Model, self).__init__()
+
+    param_dict = {'work':'Model','epoch':epoch,'batch_size':batch_size,'learning_rate':learning_rate}
+    if self.load_param() is None:
+      self.save_param
 
     self.epoch = epoch
     self.batch_size = batch_size
     self.learning_rate = learning_rate
-    self.model = None
+    # self.model = None
 
   def net_init(self):
 
-    self.model = nn.Sequential(nn.Linear(20*10, 2), nn.Sigmoid())
+    self.fc = nn.Linear(20*10, 2)
+
+  def forward(self, input1):
+
+    input1 = input1.view(input1.shape[0], 20*10)
+    input1 = self.fc(input1)
+    input1 = torch.sigmoid(input1)
+
+    return input1
 
   def objective(self):
 
@@ -28,13 +41,13 @@ class Model(nn.Module):
 
     self.net_init()
     print()
-    model.train()
-    optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
+    self.train()
+    optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
     for e in range(self.epoch):
       for features, labels in train_loader:
           outputs_train = []
           features = features.view(features.shape[0], 20*10)
-          logps = self.model(features)
+          logps = self.forward(features)
           loss = self.objective()
           loss = loss(logps,labels.type(torch.long))
           outputs_train.append(logps.detach().numpy())
@@ -43,19 +56,18 @@ class Model(nn.Module):
           optimizer.step()
 
       print('Epoch: %d: Loss=%.3f'%(e+1,loss))
-    self.save('temp',self.model.state_dict(),os.getcwd())
+    self.save_model('temp',self.state_dict(),os.getcwd())
 
   def predict(self, test_loader):
 
-    self.model.eval()
+    self.eval()
     test_loss = 0
     outputs_test = []
     labels_test = []
     with torch.no_grad():
         for data_1 in test_loader:
             inputs, labels = data_1
-            inputs = inputs.view(inputs.shape[0], 20*10)
-            outputs = self.model(inputs)
+            outputs = self.forward(inputs)
             # outputs = outputs.reshape(1,num_classes)
             batch_loss = self.objective()
             batch_loss = batch_loss(outputs, labels.type(torch.long))
@@ -82,7 +94,7 @@ class Model(nn.Module):
 
     return mat, acc, mcc
 
-  def save(self, model_name, model, path):
+  def save_model(self, model_name, model, path):
 
     modelpath = os.path.join(path,model_name)
     if not os.path.exists(modelpath):
@@ -91,12 +103,21 @@ class Model(nn.Module):
     else:
       print('Model already exists')
 
-  def load(self, model_name, path):
+  def load_model(self, model_name, path):
 
     modelpath = os.path.join(path,model_name)
     if os.path.exists(modelpath):
       self.net_init()
-      return self.model.load_state_dict(torch.load(os.path.join(modelpath, model_name)))
+      return self.load_state_dict(torch.load(os.path.join(modelpath, model_name)))
+    return None
+
+  def save_param(self, path, param_dict):
+    with open(os.path.join(path, '/train_parameters.json'), 'w') as f:
+      json.dump(param_dict, f, indent=2)
+
+  def load_param(self, path):
+    if os.path.exists(os.path.join(path,'train_parameters.json')):
+      return json.load(open(os.path.join(path,'train_parameters.json'), 'r'))
     return None
 
 if __name__ == '__main__':
@@ -105,14 +126,10 @@ if __name__ == '__main__':
   train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=300)
 
   model = Model(batch_size=15)
-  if model.load('temp', os.getcwd()) == None:
+  if model.load_model('temp', os.getcwd()) == None:
     model.fit(train_loader)
   else:
-    m = model.load('temp', os.getcwd())
+    m = model.load_model('temp', os.getcwd())
 
   out_test, labels_test = model.predict(test_loader)
   mat, acc, mcc = model.evaluate(out_test, labels_test)
-
-
-
-
