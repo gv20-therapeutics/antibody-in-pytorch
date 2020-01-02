@@ -12,13 +12,16 @@ class Model(nn.Module):
   def __init__(self, param_dict, *args, **kwargs):
     super(Model, self).__init__()
 
-    self.model_name = param_dict['model_name']
+    self.param_dict = param_dict
+    self.model_name = self.param_dict['model_name']
     self.workpath = os.path.join(os.getcwd(),'work')
+    self.seq_len = self.param_dict['seq_len']
     self.modelnamepath = os.path.join(self.workpath,self.model_name)
     self.modelpath = os.path.join(self.modelnamepath,'model')
-    self.epoch = param_dict['epoch']
-    self.batch_size = param_dict['batch_size']
-    self.learning_rate = param_dict['learning_rate']
+    self.epoch = self.param_dict['epoch']
+    self.batch_size = self.param_dict['batch_size']
+    self.learning_rate = self.param_dict['learning_rate']
+    self.optim_name = self.param_dict['optim_name']
 
     if not os.path.exists(self.workpath):
       os.mkdir(self.workpath)
@@ -27,11 +30,11 @@ class Model(nn.Module):
 
   def net_init(self):
 
-    self.fc = nn.Linear(20*10, 2)
+    self.fc = nn.Linear(20*self.seq_len, 2)
 
   def forward(self, input1):
 
-    input1 = input1.view(input1.shape[0], 20*10)
+    input1 = input1.view(input1.shape[0], 20*self.seq_len)
     input1 = self.fc(input1)
     input1 = torch.sigmoid(input1)
 
@@ -40,15 +43,15 @@ class Model(nn.Module):
   def objective(self):
     return nn.CrossEntropyLoss()
 
-  def optimizers(self, optim_name='Adam'):
+  def optimizers(self):
 
-    if optim_name=='Adam':
+    if self.optim_name == 'Adam':
       return optim.Adam(self.parameters(), lr=self.learning_rate)
 
-    elif optim_name=='RMSprop':
+    elif self.optim_name == 'RMSprop':
       return optim.RMSprop(self.parameters(), lr=self.learning_rate)
 
-    elif optim_name=='SGD':
+    elif self.optim_name == 'SGD':
       return optim.SGD(self.parameters(), lr=self.learning_rate)   
 
   def fit(self, train_loader):
@@ -59,8 +62,7 @@ class Model(nn.Module):
       saved_epoch = self.load_model()
     
     self.train()
-    # optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-    optimizer = self.optimizers(optim_name='Adam')
+    optimizer = self.optimizers()
     total_loss=i=0
     for e in range(saved_epoch, self.epoch):
       for features, labels in train_loader:
@@ -141,10 +143,11 @@ class Model(nn.Module):
 if __name__ == '__main__':
 
   param_dict = {'num_samples':1000,
-                'seq_len':10,
+                'seq_len':20,
                 'batch_size':20,
                 'model_name':'Model',
-                'epoch':60,
+                'optim_name':'Adam',
+                'epoch':50,
                 'learning_rate':0.01}
 
   data, out = loader.synthetic_data(num_samples=param_dict['num_samples'], seq_len=param_dict['seq_len'])
@@ -153,9 +156,7 @@ if __name__ == '__main__':
   model = Model(param_dict)
 
   if model.load_param(model.modelnamepath) is None:
-    model.save_param(model.modelnamepath, param_dict)
-  else:
-    param_dict = model.load_param(model.modelnamepath)
+    model.save_param(model.modelnamepath, model.param_dict)
 
   model.fit(train_loader)
 
