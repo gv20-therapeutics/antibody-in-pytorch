@@ -5,10 +5,11 @@ from torch.utils import data
 import numpy as np
 import pandas as pd
 
+AA_List = 'ACDEFGHIKLMNPQRSTVWY'
+
 def synthetic_data(num_samples, seq_len):
 
-    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
-    aa_size = len(aa_list)
+    aa_size = len(AA_List)
     data = np.zeros((num_samples,seq_len),dtype=int)
     out = np.zeros((num_samples),dtype=int)
     for i in range(num_samples):
@@ -17,16 +18,12 @@ def synthetic_data(num_samples, seq_len):
     for i in range(num_samples):
         if i<round(num_samples / 2):
             out[i] = 1
-        else:
-            out[i] = 0
-    data = encode_data(data)
-    
+
     return data, out
 
 def encode_data(data):
     
-    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
-    codes = np.eye(len(aa_list))
+    codes = np.eye(len(AA_List))
     x = codes[data]
     return x
 

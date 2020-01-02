@@ -9,17 +9,30 @@ import json
 
 class Model(nn.Module):
 
-  def __init__(self, epoch=50, batch_size=16, learning_rate=0.01, *args, **kwargs):
+  def __init__(self, model_name='Model', epoch=50, batch_size=16, learning_rate=0.01, *args, **kwargs):
     super(Model, self).__init__()
 
-    param_dict = {'work':'Model','epoch':epoch,'batch_size':batch_size,'learning_rate':learning_rate}
-    if self.load_param() is None:
-      self.save_param
+    self.model_name = model_name
+    self.workpath = os.path.join(os.getcwd(),'work')
+    self.modelnamepath = os.path.join(self.workpath,self.model_name)
+    self.modelpath = os.path.join(self.modelnamepath,'model')
 
-    self.epoch = epoch
-    self.batch_size = batch_size
-    self.learning_rate = learning_rate
-    # self.model = None
+    if not os.path.exists(self.workpath):
+      os.mkdir(self.workpath)
+      if not os.path.exists(self.modelnamepath):
+        os.mkdir(self.modelnamepath)
+
+    if self.load_param(self.modelnamepath) is None:
+      param_dict = {'model_name':model_name,'epoch':epoch,'batch_size':batch_size,'learning_rate':learning_rate}
+      self.save_param(self.modelnamepath, param_dict)
+      self.epoch = epoch
+      self.batch_size = batch_size
+      self.learning_rate = learning_rate
+    else:
+      param_dict = self.load_param(self.modelnamepath)
+      self.epoch = param_dict['epoch']
+      self.batch_size = param_dict['batch_size']
+      self.learning_rate = param_dict['learning_rate']
 
   def net_init(self):
 
@@ -46,7 +59,7 @@ class Model(nn.Module):
     for e in range(self.epoch):
       for features, labels in train_loader:
           outputs_train = []
-          features = features.view(features.shape[0], 20*10)
+          # features = features.view(features.shape[0], 20*10)
           logps = self.forward(features)
           loss = self.objective()
           loss = loss(logps,labels.type(torch.long))
@@ -54,9 +67,10 @@ class Model(nn.Module):
           optimizer.zero_grad()
           loss.backward()
           optimizer.step()
+          self.save_model('Epoch_'+str(e+1),self.state_dict())
 
       print('Epoch: %d: Loss=%.3f'%(e+1,loss))
-    self.save_model('temp',self.state_dict(),os.getcwd())
+    
 
   def predict(self, test_loader):
 
@@ -94,25 +108,23 @@ class Model(nn.Module):
 
     return mat, acc, mcc
 
-  def save_model(self, model_name, model, path):
+  def save_model(self, filename, model):
 
-    modelpath = os.path.join(path,model_name)
-    if not os.path.exists(modelpath):
-      os.mkdir(modelpath)
-      torch.save(model,os.path.join(modelpath,model_name))
+    if not os.path.exists(self.modelpath):
+      os.mkdir(self.modelpath)
+      torch.save(model,os.path.join(self.modelpath,filename))
     else:
-      print('Model already exists')
+      torch.save(model,os.path.join(self.modelpath,filename))
 
-  def load_model(self, model_name, path):
+  def load_model(self, filename):
 
-    modelpath = os.path.join(path,model_name)
-    if os.path.exists(modelpath):
+    if os.path.exists(self.modelpath):
       self.net_init()
-      return self.load_state_dict(torch.load(os.path.join(modelpath, model_name)))
+      return self.load_state_dict(torch.load(os.path.join(self.modelpath,filename)))
     return None
 
   def save_param(self, path, param_dict):
-    with open(os.path.join(path, '/train_parameters.json'), 'w') as f:
+    with open(os.path.join(path, 'train_parameters.json'), 'w') as f:
       json.dump(param_dict, f, indent=2)
 
   def load_param(self, path):
@@ -123,13 +135,14 @@ class Model(nn.Module):
 if __name__ == '__main__':
 
   data, out = loader.synthetic_data(num_samples=1000, seq_len=10)
+  data = loader.encode_data(data)
   train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=300)
 
   model = Model(batch_size=15)
-  if model.load_model('temp', os.getcwd()) == None:
+  if model.load_model('Epoch_'+str(model.epoch)) == None:
     model.fit(train_loader)
   else:
-    m = model.load_model('temp', os.getcwd())
+    m = model.load_model('Epoch_'+str(model.epoch))
 
   out_test, labels_test = model.predict(test_loader)
   mat, acc, mcc = model.evaluate(out_test, labels_test)
