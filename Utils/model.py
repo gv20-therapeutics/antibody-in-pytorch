@@ -9,30 +9,21 @@ import json
 
 class Model(nn.Module):
 
-  def __init__(self, model_name='Model', epoch=50, batch_size=16, learning_rate=0.01, *args, **kwargs):
+  def __init__(self, param_dict, *args, **kwargs):
     super(Model, self).__init__()
 
-    self.model_name = model_name
+    self.model_name = param_dict['model_name']
     self.workpath = os.path.join(os.getcwd(),'work')
     self.modelnamepath = os.path.join(self.workpath,self.model_name)
     self.modelpath = os.path.join(self.modelnamepath,'model')
+    self.epoch = param_dict['epoch']
+    self.batch_size = param_dict['batch_size']
+    self.learning_rate = param_dict['learning_rate']
 
     if not os.path.exists(self.workpath):
       os.mkdir(self.workpath)
       if not os.path.exists(self.modelnamepath):
         os.mkdir(self.modelnamepath)
-
-    if self.load_param(self.modelnamepath) is None:
-      param_dict = {'model_name':model_name,'epoch':epoch,'batch_size':batch_size,'learning_rate':learning_rate}
-      self.save_param(self.modelnamepath, param_dict)
-      self.epoch = epoch
-      self.batch_size = batch_size
-      self.learning_rate = learning_rate
-    else:
-      param_dict = self.load_param(self.modelnamepath)
-      self.epoch = param_dict['epoch']
-      self.batch_size = param_dict['batch_size']
-      self.learning_rate = param_dict['learning_rate']
 
   def net_init(self):
 
@@ -47,30 +38,45 @@ class Model(nn.Module):
     return input1
 
   def objective(self):
+    return nn.CrossEntropyLoss()
 
-      return nn.CrossEntropyLoss()
+  def optimizers(self, optim_name='Adam'):
+
+    if optim_name=='Adam':
+      return optim.Adam(self.parameters(), lr=self.learning_rate)
+
+    elif optim_name=='RMSprop':
+      return optim.RMSprop(self.parameters(), lr=self.learning_rate)
+
+    elif optim_name=='SGD':
+      return optim.SGD(self.parameters(), lr=self.learning_rate)   
 
   def fit(self, train_loader):
 
+    saved_epoch = 0
     self.net_init()
-    print()
+    if self.load_model() is not None:
+      saved_epoch = self.load_model()
+    
     self.train()
-    optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-    for e in range(self.epoch):
+    # optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+    optimizer = self.optimizers(optim_name='Adam')
+    total_loss=i=0
+    for e in range(saved_epoch, self.epoch):
       for features, labels in train_loader:
           outputs_train = []
-          # features = features.view(features.shape[0], 20*10)
           logps = self.forward(features)
           loss = self.objective()
           loss = loss(logps,labels.type(torch.long))
+          total_loss+=loss
+          i+=1
           outputs_train.append(logps.detach().numpy())
           optimizer.zero_grad()
           loss.backward()
           optimizer.step()
-          self.save_model('Epoch_'+str(e+1),self.state_dict())
-
-      print('Epoch: %d: Loss=%.3f'%(e+1,loss))
-    
+      
+      self.save_model('Epoch_'+str(e+1),self.state_dict())
+      print('Epoch: %d: Loss=%.3f'%(e+1,total_loss/i))
 
   def predict(self, test_loader):
 
@@ -82,7 +88,6 @@ class Model(nn.Module):
         for data_1 in test_loader:
             inputs, labels = data_1
             outputs = self.forward(inputs)
-            # outputs = outputs.reshape(1,num_classes)
             batch_loss = self.objective()
             batch_loss = batch_loss(outputs, labels.type(torch.long))
             test_loss += batch_loss.item()
@@ -116,11 +121,12 @@ class Model(nn.Module):
     else:
       torch.save(model,os.path.join(self.modelpath,filename))
 
-  def load_model(self, filename):
+  def load_model(self):
 
-    if os.path.exists(self.modelpath):
-      self.net_init()
-      return self.load_state_dict(torch.load(os.path.join(self.modelpath,filename)))
+    for e in range(self.epoch,0,-1):
+      if os.path.isfile(os.path.join(self.modelpath,'Epoch_'+str(e))):
+        self.load_state_dict(torch.load(os.path.join(self.modelpath,'Epoch_'+str(e))))
+        return e
     return None
 
   def save_param(self, path, param_dict):
@@ -134,15 +140,24 @@ class Model(nn.Module):
 
 if __name__ == '__main__':
 
-  data, out = loader.synthetic_data(num_samples=1000, seq_len=10)
-  data = loader.encode_data(data)
-  train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=300)
+  param_dict = {'num_samples':1000,
+                'seq_len':10,
+                'batch_size':20,
+                'model_name':'Model',
+                'epoch':60,
+                'learning_rate':0.01}
 
-  model = Model(batch_size=15)
-  if model.load_model('Epoch_'+str(model.epoch)) == None:
-    model.fit(train_loader)
+  data, out = loader.synthetic_data(num_samples=param_dict['num_samples'], seq_len=param_dict['seq_len'])
+  data = loader.encode_data(data)
+  train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=param_dict['batch_size'])
+  model = Model(param_dict)
+
+  if model.load_param(model.modelnamepath) is None:
+    model.save_param(model.modelnamepath, param_dict)
   else:
-    m = model.load_model('Epoch_'+str(model.epoch))
+    param_dict = model.load_param(model.modelnamepath)
+
+  model.fit(train_loader)
 
   out_test, labels_test = model.predict(test_loader)
   mat, acc, mcc = model.evaluate(out_test, labels_test)
