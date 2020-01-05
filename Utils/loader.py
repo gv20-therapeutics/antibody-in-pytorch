@@ -33,8 +33,8 @@ def train_test_loader(x, y, test_size=0.3, batch_size=16):
 
     x_tensor = torch.from_numpy(X_train).float()
     y_tensor = torch.from_numpy(y_train).float()
-    train_dataset = data.TensorDataset(x_tensor, y_tensor)
-    train_loader = data.DataLoader(dataset=train_dataset, batch_size=batch_size)
+    train_dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
 
     x_tensor = torch.from_numpy(X_test).float()
     y_tensor = torch.from_numpy(y_test).float()
