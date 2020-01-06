@@ -17,32 +17,18 @@ class Model(nn.Module):
 
         if 'model_name' not in para_dict:
             self.model_name = 'Model'
-        else:
-            self.model_name = self.para_dict['model_name']
         if 'seq_len' not in para_dict:
             self.seq_len = 10
-        else:
-            self.seq_len = self.para_dict['seq_len']
         if 'epoch' not in para_dict:
             self.epoch = 50
-        else:
-            self.epoch = self.para_dict['epoch']
         if 'batch_size' not in para_dict:
             self.batch_size = 20
-        else:
-            self.batch_size = self.para_dict['batch_size']
         if 'step_size' not in para_dict:
             self.step_size = 5
-        else:
-            self.step_size = self.para_dict['step_size']
         if 'learning_rate' not in para_dict:
             self.learning_rate = 0.01
-        else:
-            self.learning_rate = self.para_dict['learning_rate']
         if 'optim_name' not in para_dict:
             self.optim_name = 'Adam'
-        else:
-            self.optim_name = self.para_dict['optim_name']
 
         self.model_path = os.path.join(self.work_path, self.para_dict['model_name'])
         self.save_path = os.path.join(self.model_path, 'model')
