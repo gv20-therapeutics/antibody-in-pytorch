@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import loader
+from . import loader
 import os, json
 import numpy as np
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     if model.load_param(model.modelnamepath) is None:
         model.save_param(model.modelnamepath, model.para_dict)
-        model.fit(train_loader)
+    model.fit(train_loader)
 
     out_test, labels_test = model.predict(test_loader)
     mat, acc, mcc = model.evaluate(out_test, labels_test)
