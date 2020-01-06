@@ -22,7 +22,9 @@ cd gv20-therapeutics
 
 **Command to run:** python -m antibody-in-pytorch.(Name of the folder).(Name of the model)
 
-Example(Mason's CNN model): python antibody-in-pytorch.Mason.Model_CNN_classifier_v1 
+```bash 
+python antibody-in-pytorch.Mason.Model_CNN_classifier_v1  # Example to run Mason's CNN model
+```
 
 ## References
 
