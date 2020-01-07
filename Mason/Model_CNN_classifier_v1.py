@@ -12,13 +12,13 @@ class CNN_classifier(Model):
         super(CNN_classifier, self).__init__(para_dict, *args, **kwargs)
 
         if 'dropout_rate' not in para_dict:
-            self.dropout_rate = 0.5
+            self.para_dict['dropout_rate'] = 0.5
         if 'n_filter' not in para_dict:
-            self.n_filter = 400
+            self.para_dict['n_filter'] = 400
         if 'filter_size' not in para_dict:
-            self.filter_size = 3
+            self.para_dict['filter_size'] = 3
         if 'fc_hidden_dim' not in para_dict:
-            self.fc_hidden_dim = 50
+            self.para_dict['fc_hidden_dim'] = 50
     
     def net_init(self):
         self.conv1 = nn.Conv1d(in_channels = 20, 

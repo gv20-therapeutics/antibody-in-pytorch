@@ -12,11 +12,11 @@ class LSTM_RNN_classifier(Model):
         super(LSTM_RNN_classifier, self).__init__(para_dict, *args, **kwargs)
 
         if 'dropout_rate' not in para_dict:
-            self.dropout_rate = 0.5
+            self.para_dict['dropout_rate'] = 0.5
         if 'hidden_dim' not in para_dict:
-            self.hidden_dim = 40
+            self.para_dict['hidden_dim'] = 40
         if 'hidden_layer_num' not in para_dict:
-            self.hidden_layer_num = 3
+            self.para_dict['hidden_layer_num'] = 3
 
     def net_init(self):
         self.lstm = nn.LSTM(20, self.para_dict['hidden_dim'], batch_first = False,
