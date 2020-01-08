@@ -35,6 +35,7 @@ python antibody-in-pytorch.Mason.Model_CNN_classifier_v1  # Example to run Mason
 
 1. Mason et al., Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
 2. Wollacott et al., Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
+3. Liu et al., Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
 
 ## Related works
 
