@@ -26,6 +26,11 @@ cd gv20-therapeutics
 python antibody-in-pytorch.Mason.Model_CNN_classifier_v1  # Example to run Mason's CNN model
 ```
 
+## Antibody datasets
+* SAAB and OAS [http://antibodymap.org/]
+* SAbDab [http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/]
+* cAb-Rep [https://cab-rep.c2b2.columbia.edu/tools/]
+
 ## References
 
 1. Mason et al., Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
