@@ -20,14 +20,16 @@ def synthetic_data(num_samples=1000, seq_len=10, aa_list=AA_LS):
 
     return data, out
 
-
 def encode_data(data, aa_list=AA_LS):
     codes = np.eye(len(aa_list))
     x = codes[data]
     return x
 
+def collate_fn(batch):
+    return batch, [x for seq in batch for x in seq]
 
-def train_test_loader(x, y, test_size=0.3, batch_size=16):
+def train_test_loader(x, y=None, test_size=0.3, batch_size=16):
+
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=test_size, shuffle=True)
 
     x_tensor = torch.from_numpy(X_train).float()
@@ -38,6 +40,26 @@ def train_test_loader(x, y, test_size=0.3, batch_size=16):
     x_tensor = torch.from_numpy(X_test).float()
     y_tensor = torch.from_numpy(y_test).float()
     test_dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
-    test_loader = torch.utils.data.DataLoader(dataset=test_dataset)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size)
+
+    return train_loader, test_loader
+
+def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3, batch_size=16):
+
+    aa_size = len(aa_list)
+    data = []
+    for i in range(num_samples):
+        temp = []
+        for j in range(seq_len):
+            temp.append([np.random.randint(aa_size)])
+
+        data.append(temp)
+
+    X_train, X_test = train_test_split(np.array(data), test_size=test_size, shuffle=True)
+    x_tensor = torch.from_numpy(X_train)
+    train_loader = torch.utils.data.DataLoader(x_tensor, batch_size=batch_size, collate_fn=collate_fn)
+
+    x_tensor = torch.from_numpy(X_test)
+    test_loader = torch.utils.data.DataLoader(dataset=x_tensor, batch_size=batch_size, collate_fn=collate_fn)
 
     return train_loader, test_loader

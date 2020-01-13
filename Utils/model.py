@@ -6,6 +6,8 @@ import os
 import json
 import numpy as np
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
+import warnings
+warnings.filterwarnings("ignore")
 
 class Model(nn.Module):
 
@@ -59,13 +61,13 @@ class Model(nn.Module):
 
     def optimizers(self):
 
-        if self.optim_name == 'Adam':
+        if self.para_dict['optim_name'] == 'Adam':
             return optim.Adam(self.parameters(), lr=self.para_dict['learning_rate'])
 
-        elif self.optim_name == 'RMSprop':
+        elif self.para_dict['optim_name'] == 'RMSprop':
             return optim.RMSprop(self.parameters(), lr=self.para_dict['learning_rate'])
 
-        elif self.optim_name == 'SGD':
+        elif self.para_dict['optim_name'] == 'SGD':
             return optim.SGD(self.parameters(), lr=self.para_dict['learning_rate'])
 
     def fit(self, data_loader):
@@ -79,11 +81,12 @@ class Model(nn.Module):
 
         for e in range(saved_epoch, self.para_dict['epoch']):
             total_loss = 0
-            for features, labels in data_loader:
+            for input in data_loader:
                 outputs_train = []
+                features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
-                loss = loss(logps, labels.type(torch.long))
+                loss = loss(logps, torch.tensor(labels).type(torch.long))
                 total_loss += loss
                 outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
@@ -99,24 +102,31 @@ class Model(nn.Module):
         self.eval()
         test_loss = 0
         all_outputs = []
-        # labels_test = []
+        labels_test = []
         with torch.no_grad():
             for data in data_loader:
+
                 inputs, _ = data
                 outputs = self.forward(inputs)
                 all_outputs.append(outputs.detach().numpy())
+                # labels_test.append(np.array(l))
 
             return np.vstack(all_outputs)
 
     def evaluate(self, outputs, labels):
 
         y_pred = []
+        # print(outputs.shape)
+        # print(labels.shape)
         for a in outputs:
-            if a[0]>a[1]:
-                y_pred.append(0)
+            if a.shape[0]==21:
+                y_pred.append(np.argmax(a))
             else:
-                y_pred.append(1)
-        y_true = np.array(labels)
+                if a[0]>a[1]:
+                    y_pred.append(0)
+                else:
+                    y_pred.append(1)
+        y_true = np.array(labels).flatten()
         y_pred = np.array(y_pred)
         mat = confusion_matrix(y_true, y_pred)
         acc = accuracy_score(y_true, y_pred)
@@ -135,7 +145,7 @@ class Model(nn.Module):
 
         for e in range(self.para_dict['epoch'], 0, -1):
             if os.path.isfile(os.path.join(self.save_path, 'Epoch_' + str(e))):
-                print(os.path.join(self.save_path, 'Epoch_' + str(e)))
+                # print(os.path.join(self.save_path, 'Epoch_' + str(e)))
                 self.load_state_dict(torch.load(os.path.join(self.save_path, 'Epoch_' + str(e))))
                 return e
         return 0
