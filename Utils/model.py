@@ -119,13 +119,10 @@ class Model(nn.Module):
         # print(outputs.shape)
         # print(labels.shape)
         for a in outputs:
-            if a.shape[0]==21:
-                y_pred.append(np.argmax(a))
+            if a[0]>a[1]:
+                y_pred.append(0)
             else:
-                if a[0]>a[1]:
-                    y_pred.append(0)
-                else:
-                    y_pred.append(1)
+                y_pred.append(1)
         y_true = np.array(labels).flatten()
         y_pred = np.array(y_pred)
         mat = confusion_matrix(y_true, y_pred)

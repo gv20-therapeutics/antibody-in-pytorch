@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 from ..Utils.model import Model
 from ..Utils import loader
 import numpy as np
+from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 
 # true if gapped else false
 vocab_o = { True: ['-'] + ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'],
@@ -180,6 +181,22 @@ class LSTM_Bi(Model):
     
     def objective(self):
         return nn.NLLLoss()
+
+    def evaluate(self, outputs, labels):
+        y_pred=[]
+        for a in outputs:
+            y_pred.append(np.argmax(a))
+        y_true = np.array(labels).flatten()
+        y_pred = np.array(y_pred)
+        mat = confusion_matrix(y_true, y_pred)
+        acc = accuracy_score(y_true, y_pred)
+        mcc = matthews_corrcoef(y_true, y_pred)
+
+        print('Test: ')
+        print(mat)
+        print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
+
+        return mat, acc, mcc
 
 
 if __name__ == '__main__':
