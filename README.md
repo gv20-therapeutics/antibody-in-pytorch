@@ -23,7 +23,7 @@ cd gv20-therapeutics
 **Command to run:** python -m antibody-in-pytorch.(Name of the folder).(Name of the model)
 
 ```bash 
-python -m antibody-in-pytorch.Mason.Model_CNN_classifier  # Example to run Mason's CNN model
+python -m antibody-in-pytorch.Models.Mason2020.CNN # Example to run Mason's CNN model
 ```
 
 ## Antibody datasets
@@ -33,9 +33,9 @@ python -m antibody-in-pytorch.Mason.Model_CNN_classifier  # Example to run Mason
 
 ## References
 
-1. Mason et al., Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
-2. Wollacott et al., Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
-3. Liu et al., Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
+1. Mason et al. 2020, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
+2. Wollacott et al. 2019, Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
+3. Liu et al. 2019, Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
 
 ## Related works
 
