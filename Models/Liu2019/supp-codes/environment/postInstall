@@ -1,0 +1,18 @@
+wget https://github.com/Kitware/CMake/releases/download/v3.13.2/cmake-3.13.2.tar.gz
+tar xvf cmake-3.13.2.tar.gz
+cd cmake-3.13.2
+./bootstrap
+make
+make install
+cd ../
+git clone https://github.com/Theano/libgpuarray.git
+cd libgpuarray
+mkdir Build
+cd Build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+make install
+cd ..
+python setup.py build
+python setup.py install
+ldconfig
