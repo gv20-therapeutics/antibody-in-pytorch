@@ -3,13 +3,15 @@ import os
 import glob
 import pdb
 
-fnames = glob.glob('/data2/dingqingyang/OAS/json/B*/*.json.gz') #6806
-flag_first = True
+fnames = glob.glob('/data2/dingqingyang/OAS/json/C*/*.json.gz') #6806
+print(str(len(fnames)) + ' files to be processed!')
+flag_first = False
 idx = [('FR1-IMGT',1,26), ('CDR1-IMGT',27,38), 
         ('FR2-IMGT',39,55), ('CDR2-IMGT',56,65), 
         ('FR3-IMGT',66,104), ('CDR3-IMGT',105,117),
         ('FR4-IMGT',118,129)]
 cdr_name = {'Heavy': 'h', 'Light': 'l'}
+keys = ['Longitudinal', 'Chain', 'Author','Isotype','Age','Size_igblastn','Disease', 'Link','BSource','BType','Size','Species','Vaccine','Subject']
 temp_dir = '/data2/dingqingyang/OAS/temp/'
 seq_dir = '/data2/dingqingyang/OAS/seq_db/'
 
@@ -30,17 +32,19 @@ for fname in fnames:
     # extract meta info from the OAS json file
     #pdb.set_trace()
     obj = json.loads(data)
-    keys = []
     values = []
-    for key in obj:
+    for key in keys:
         values.append(str(obj[key]))
-        keys.append(str(key))
 
     if flag_first:
         title_line = 'file_name\t' + '\t'.join(keys) + '\t' + 'valid_entry_num' + '\n'
         with open('OAS_meta_info.txt', 'w') as f:
             f.write(title_line)
         flag_first = False
+
+    data = myfile.readline()
+    cnt = 1
+    valid_cnt = 0
 
     # extract seq info line by line
     with open(seq_fname, 'w') as f:
@@ -50,7 +54,7 @@ for fname in fnames:
         valid_cnt = 0
 
         while data:
-            if cnt % 10000 == 0:
+            if cnt % 1000000 == 0:
                 print('line %d' % cnt)
             obj_seq = json.loads(data)
             obj_seq2 = json.loads(obj_seq['data'])
