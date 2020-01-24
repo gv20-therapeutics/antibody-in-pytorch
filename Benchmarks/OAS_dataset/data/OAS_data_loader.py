@@ -29,17 +29,22 @@ class OAS_Dataset(IterableDataset):
         self.gapped = gapped
         self.seq_dir = seq_dir
 
+
+
     def parse_file(self):
         # load data file
         input_fnames = [self.seq_dir + ID + '.txt' for ID in self.list_IDs]
-        for input_fname in input_fnames:
+        for m in range(len(input_fnames)):
+            input_fname = input_fnames[m]
+            ID = self.list_IDs[m]
             input_df = pd.read_csv(input_fname, sep = '\t')
+            input_df = input_df.fillna('')
             # transformation (keep the gaps or filter out the gaps; extract/assemble sequences)
             if self.input_type in input_type_dict:
                 X = input_df[input_type_dict[self.input_type]].values
             elif self.input_type == 'CDR3_full':
                 X = [input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
-                         input_df['CDR3-IMGT'].iloc[nn][:7] for nn in range(len(input_df))]
+                         input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
             elif self.input_type == 'full_length':
                 X = [''.join([input_df[item].iloc[kk] for item in full_seq_order]) for kk in range(len(input_df))]
                 X = [X[nn][:112] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
@@ -53,10 +58,10 @@ class OAS_Dataset(IterableDataset):
 
             y = [self.labels[ID] for _ in range(len(input_df))]
 
-            yield X, y
+            yield zip(X, y)
 
     def get_stream(self):
-        return cycle(self.parse_file()) 
+        return chain.from_iterable(islice(self.parse_file(), len(self.list_IDs)))
 
     def __iter__(self):
         return self.get_stream()
