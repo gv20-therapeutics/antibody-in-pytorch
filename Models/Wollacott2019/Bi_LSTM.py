@@ -223,7 +223,7 @@ if __name__ == '__main__':
     model = LSTM_Bi(para_dict)
     model.fit(train_loader)
     test_loader = torch.utils.data.DataLoader(test_data, collate_fn=collate_fn)
-    output = model.evaluate1(test_loader)
+    output = model.predict(test_loader)
     f = open('temp.txt','w')
     for a in output:
         f.write(str(a)+'\n')
