@@ -217,12 +217,15 @@ if __name__ == '__main__':
     train_data, test_data = OAS_data_loader.OAS_data_loader(
         index_file='./Models_generation/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
         input_type='CDR3')
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=para_dict['batch_size'], drop_last=True, collate_fn=collate_fn)
+    train_x = [x for x,y in train_data]
+    train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True, collate_fn=collate_fn)
     para_dict['in_dim'] = len(aa2id_i[para_dict['gapped']])
     para_dict['out_dim'] =  len(aa2id_o[para_dict['gapped']])
     model = LSTM_Bi(para_dict)
     model.fit(train_loader)
-    test_loader = torch.utils.data.DataLoader(test_data, collate_fn=collate_fn)
+    test_x = [x for x, y in test_data]
+    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
+
     output = model.predict(test_loader)
     f = open('temp.txt','w')
     for a in output:

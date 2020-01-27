@@ -66,10 +66,9 @@ class OAS_Dataset(IterableDataset):
 
             X = self.encode_index(X)
             y = [self.labels[ID] for _ in range(len(input_df))]
-            # print(len(y))
 
             # print(len(X))
-            yield X
+            yield zip(X, y)
 
     def get_stream(self):
         return chain.from_iterable(islice(self.parse_file(), len(self.list_IDs)))
@@ -86,8 +85,7 @@ def collate_fn(batch):
 
 def OAS_data_loader(index_file, output_field, input_type, gapped=True, seq_dir='./Models_generation/Benchmarks/OAS_dataset/data/seq_db/'):
     index_df = pd.read_csv(index_file, sep='\t')
-    index_df = index_df[index_df.valid_entry_num>=50000].take([0,1,2])
-        # set_index("valid_entry_num").drop(0, axis=0).drop(1, axis=0) #.take([0,1,2,15,16,17,18])
+    index_df = index_df[index_df.valid_entry_num>1]
     train_df = index_df[index_df.Species=='human']
 
     print(train_df)
