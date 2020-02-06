@@ -1,9 +1,11 @@
 from torch.utils.data import Dataset
 from ...Utils.model import Model
-from ...Utils import loader
+import pandas as pd
 from ...Benchmarks.OAS_dataset.data import OAS_data_loader
 import numpy as np
-from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
+from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # true if gapped else false
 vocab_o = { True: ['-'] + ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'],
@@ -174,14 +176,13 @@ class LSTM_Bi(Model):
 
         # compute scores
         scores = F.log_softmax(out, dim=1)
-        print(scores)
 
         return scores
 
     def objective(self):
         return nn.NLLLoss()
 
-    def predict(self, test_loader):
+    def NLS_score(self, test_loader):
 
         scores = []
         self.eval()
@@ -199,14 +200,30 @@ class LSTM_Bi(Model):
                     pos_scores.append(out[i][j, batch[i][j]])
                 batch_scores.append(-sum(pos_scores) / seq_len[i])
             scores.append(batch_scores[0])
-        return scores
+        return np.array(scores)
+
+    def evaluate(self, outputs, labels):
+         y_pred=[]
+         for a in outputs:
+             y_pred.append(np.argmax(a))
+         y_true = np.array(labels).flatten()
+         y_pred = np.array(y_pred)
+         mat = confusion_matrix(y_true, y_pred)
+         acc = accuracy_score(y_true, y_pred)
+         mcc = matthews_corrcoef(y_true, y_pred)
+
+         print('Test: ')
+         print(mat)
+         print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
+
+         # return mat, acc, mcc
 
 if __name__ == '__main__':
 
-    para_dict = {'model_name': 'LSTM_Bi',
+    para_dict = {'model_name': 'LSTM_Bi1',
                  'optim_name': 'Adam',
-                 'step_size': 10,
-                 'epoch': 5,
+                 'step_size': 100,
+                 'epoch': 200,
                  'batch_size' : 25000,
                  'learning_rate': 0.01,
                  'gapped':True,
@@ -214,20 +231,85 @@ if __name__ == '__main__':
                  'hidden_dim':64,
                  'fixed_len':True}
 
-    train_data, test_data = OAS_data_loader.OAS_data_loader(
-        index_file='./Models_generation/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-        input_type='CDR3')
-    train_x = [x for x,y in train_data]
-    train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True, collate_fn=collate_fn)
+    # train_data = OAS_data_loader.OAS_data_loader(
+    #     index_file='./Models_generation/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
+    #     input_type='CDR3')
+    # train_x = [x for x,y in train_data]
+    # train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True,
+    #                                            collate_fn=collate_fn)
+    train_data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Human_train_seq.csv', sep='\t')
+    train_x = OAS_data_loader.encode_index(data=train_data['seq'].values)
+    train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=False, collate_fn=collate_fn)
     para_dict['in_dim'] = len(aa2id_i[para_dict['gapped']])
     para_dict['out_dim'] =  len(aa2id_o[para_dict['gapped']])
     model = LSTM_Bi(para_dict)
     model.fit(train_loader)
-    test_x = [x for x, y in test_data]
-    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
 
-    output = model.predict(test_loader)
-    f = open('temp.txt','w')
-    for a in output:
-        f.write(str(a)+'\n')
-    f.close()
+    data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Human_train_seq.csv', sep='\t')
+    train_x = OAS_data_loader.encode_index(data=data['seq'].values)
+    train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
+    # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
+    #                                                  np.vstack([i for _, i in test_loader]))
+    output_human_train = model.NLS_score(train_mm)
+    print(output_human_train)
+
+    test_data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Human_test_seq.csv', sep='\t')
+    test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
+    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
+    # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
+    #                                                  np.vstack([i for _, i in test_loader]))
+    output_human = model.NLS_score(test_loader)
+
+    test_data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Rabbit_test_seq.csv',sep='\t')
+    test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
+    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
+    # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
+    #                                                     np.vstack([i for _, i in test_loader]))
+    output_rabbit = model.NLS_score(test_loader)
+
+    test_data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Mouse_test_seq.csv', sep='\t')
+    test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
+    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
+    # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
+    #                                                     np.vstack([i for _, i in test_loader]))
+    output_mouse = model.NLS_score(test_loader)
+
+    test_data = pd.read_csv('./Models_generation/Benchmarks/OAS_dataset/data/Rhesus_test_seq.csv', sep='\t')
+    test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
+    test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
+    # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
+    #                                                     np.vstack([i for _, i in test_loader]))
+    output_rhesus = model.NLS_score(test_loader)
+
+    label = [-1 if a<1000 else 1 for a in range(2000)]
+    output = np.concatenate((output_human,output_rabbit), axis=0)
+    rabbit_fpr, rabbit_tpr, _ = roc_curve(np.array(label), np.array(output))
+    AUC_score_rabbit = roc_auc_score(np.array(label), np.array(output))
+    print('AUC score for rabbit ',AUC_score_rabbit)
+    # plt.plot(rabbit_fpr, rabbit_tpr, 'r', label='rabbit(AUC='+str(AUC_score_rabbit)+')')
+
+    output = np.concatenate((output_human, output_mouse), axis=0)
+    mouse_fpr, mouse_tpr, _ = roc_curve(np.array(label), np.array(output))
+    AUC_score_mouse = roc_auc_score(np.array(label), np.array(output))
+    print('AUC score for mouse ', AUC_score_mouse)
+    # plt.plot(mouse_fpr, mouse_tpr, 'g', label = 'mouse(AUC='+str(AUC_score_mouse)+')')
+
+    output = np.concatenate((output_human, output_rhesus), axis=0)
+    rhesus_fpr, rhesus_tpr, _ = roc_curve(np.array(label), np.array(output))
+    AUC_score_rhesus = roc_auc_score(np.array(label), np.array(output))
+    print('AUC score for rhesus ', AUC_score_rhesus)
+    # plt.plot(rhesus_fpr, rhesus_tpr, 'b', label = 'rhesus(AUC='+str(AUC_score_rhesus)+')')
+
+    # plt.xlabel('False positive rate')
+    # plt.ylabel('True positive rate')
+    # plt.legend()
+    # plt.savefig(model.save_path)
+
+    plt.hist(output_human_train, histtype='step', normed=True, color='red', label='Human_train')
+    plt.hist(output_human, histtype='step', normed=True, color='orange', label='Human_test')
+    plt.hist(output_rabbit, histtype='step', normed=True, color='blue', label='Rabbit')
+    plt.hist(output_mouse, histtype='step', normed=True, color='green', label='Mouse')
+    plt.legend()
+    plt.show()
+    print()
+    print(para_dict)

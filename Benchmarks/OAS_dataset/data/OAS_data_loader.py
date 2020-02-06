@@ -1,7 +1,6 @@
 from torch.utils.data import IterableDataset, DataLoader, Dataset
 import pandas as pd
 import numpy as np
-import os
 from itertools import cycle, islice, chain
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
@@ -14,6 +13,14 @@ full_seq_order = ['FW1-IMGT', 'CDR1-IMGT', 'FW2-IMGT', 'CDR2-IMGT', \
 AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
+
+def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-'):
+    aa_list = list(aa_list)
+    X = np.zeros((len(data), len(data[0])), dtype=int)
+    for i, seq in enumerate(data):
+        for j, s in enumerate(seq):
+            X[i, j] = aa_list.index(s)
+    return X
 
 class OAS_Dataset(IterableDataset):
     def __init__(self, list_IDs, labels, input_type, gapped=True, seq_dir='./seq_db/'):
@@ -31,19 +38,13 @@ class OAS_Dataset(IterableDataset):
         self.gapped = gapped
         self.seq_dir = seq_dir
 
-    def encode_index(self, data, aa_list='ACDEFGHIKLMNPQRSTVWY-'):
-        aa_list = list(aa_list)
-        X = np.zeros((len(data), len(data[0])), dtype=int)
-        for i, seq in enumerate(data):
-            for j, s in enumerate(seq):
-                X[i, j] = aa_list.index(s)
-        return X
-
     def parse_file(self):
+
         # load data file
         input_fnames = [self.seq_dir + ID + '.txt' for ID in self.list_IDs]
         for m in range(len(input_fnames)):
             input_fname = input_fnames[m]
+            # print(input_fname)
             ID = self.list_IDs[m]
             input_df = pd.read_csv(input_fname, sep='\t')
             input_df = input_df.fillna('')
@@ -64,7 +65,7 @@ class OAS_Dataset(IterableDataset):
             if not self.gapped:
                 X = [item.replace('-', '') for item in X]
 
-            X = self.encode_index(X)
+            X = encode_index(X)
             y = [self.labels[ID] for _ in range(len(input_df))]
 
             # print(len(X))
@@ -87,7 +88,7 @@ def OAS_data_loader(index_file, output_field, input_type, gapped=True, seq_dir='
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num>1]
     train_df = index_df[index_df.Species=='human']
-
+    train_df = train_df[10:110]
     print(train_df)
 
     # Datasets
@@ -101,6 +102,6 @@ def OAS_data_loader(index_file, output_field, input_type, gapped=True, seq_dir='
 
     # generators
     training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir)
-    testing_set = OAS_Dataset(partition['test'], labels, input_type, gapped, seq_dir)
+    # testing_set = OAS_Dataset(partition['test'], labels, input_type, gapped, seq_dir)
 
-    return training_set, testing_set
+    return training_set
