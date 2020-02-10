@@ -1,0 +1,32 @@
+# Step1: propose_seq.sh
+# train a series of model using 4 training datasets; saving model weights in result dir
+	''' bash utils/sub_ensemble.sh <root_directory_prefix (net)> <model_type (way)> '''
+	bash utils/sub_ensemble.sh Easy_classification_0615_holdouttop_reg reg
+	bash utils/sub_ensemble.sh Easy_classification_0622_reg reg
+	bash utils/sub_ensemble.sh Easy_classification_0604_holdouttop_reg reg
+	bash utils/sub_ensemble.sh Easy_classification_0604_holdouttop class
+
+		# in each sub_ensemble.sh:
+		for model in seq_32x1_16  seq_64x1_16  seq_32x2_16  seq_32_32  seq_32x1_16_filt3  seq_emb_32x1_16; do
+			mkdir ../results/seq_gen/${net}/${model}
+			THEANO_FLAGS='floatX=float32,device=cuda,lib.cnmem=0.1' python utils/single_opt.py ../data/${net}/Lucentis_b/CV0/${model} ${model}_ ../results/seq_gen/${net}/${model}/ 10 0.005 ../data/seeds ${way} >log/${model}_${net}-0.005-10.log 2>&1 &
+			THEANO_FLAGS='floatX=float32,device=cuda,lib.cnmem=0.1' python utils/single_opt.py ../data/${net}/Lucentis_b/CV0/${model} ${model}_ ../results/seq_gen/${net}/${model}/ 20 0.005 ../data/seeds ${way} >log/${model}_${net}-0.005-20.log 2>&1 & 
+
+			''' utils/single_opt.py <root path> <architecture> <result dir> <iterations> <step size> <seed directory> <task type> '''
+
+# Step2: postprocess.py
+	for each trained model with seed sequence:
+		collect seed sequences
+	embedH5.py <FASTA input sequence file> <label file> <output file>
+	compute_pred.py <result directory> <input directory>  # predicting ensemble score
+	for each trained model:
+		process the predicted ensemble scores
+	make plots
+
+# Step3: plot2.py
+	additional plots?
+
+
+
+
+
