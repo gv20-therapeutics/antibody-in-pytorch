@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
 import matplotlib.pyplot as plt
 import os
+import pickle as pkl
 import seaborn as sns
 
 # true if gapped else false
@@ -215,44 +216,40 @@ class LSTM_Bi(Model):
         plt.hist(output_mouse, histtype='step', normed=True, color='green', label='Mouse')
         plt.legend()
         plt.savefig(os.path.join(self.model_path, 'score_plot'))
-        # plt.show()
+        plt.show()
 
     def roc_plot(self):
 
         plt.figure()
-        data = pd.read_csv('./Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv', sep='\t')
+        data = pkl.load(open('./Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
         train_x = OAS_data_loader.encode_index(data=data['seq'].values)
         train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human_train = self.NLS_score(train_mm)
 
-        test_data = pd.read_csv('./Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv',
-                                sep='\t')
+        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human = self.NLS_score(test_loader)
 
-        test_data = pd.read_csv('./Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv',
-                                sep='\t')
+        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_rabbit = self.NLS_score(test_loader)
 
-        test_data = pd.read_csv('./Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv',
-                                sep='\t')
+        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_mouse = self.NLS_score(test_loader)
 
-        test_data = pd.read_csv('./Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv',
-                                sep='\t')
+        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
@@ -306,7 +303,7 @@ if __name__ == '__main__':
     para_dict = {'model_name': 'LSTM_Bi_full_length_5k',
                  'optim_name': 'Adam',
                  'step_size': 100,
-                 'epoch': 40,
+                 'epoch': 42,
                  'batch_size': 5000,
                  'learning_rate': 0.01,
                  'gapped': True,
