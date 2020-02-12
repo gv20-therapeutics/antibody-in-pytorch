@@ -221,35 +221,35 @@ class LSTM_Bi(Model):
     def roc_plot(self):
 
         plt.figure()
-        data = pkl.load(open('./Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
+        data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
         train_x = OAS_data_loader.encode_index(data=data['seq'].values)
         train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human_train = self.NLS_score(train_mm)
 
-        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_rabbit = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_mouse = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     para_dict = {'model_name': 'LSTM_Bi_full_length_5k',
                  'optim_name': 'Adam',
                  'step_size': 100,
-                 'epoch': 42,
+                 'epoch': 50,
                  'batch_size': 5000,
                  'learning_rate': 0.01,
                  'gapped': True,
@@ -313,7 +313,7 @@ if __name__ == '__main__':
 
     # To get the data from the OAS database files
     train_data = OAS_data_loader.OAS_data_loader(
-        index_file='./Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
+        index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
         input_type='full_length', species_type='human', num_files=30)
     train_x = [x for x, y in train_data]
     train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True,

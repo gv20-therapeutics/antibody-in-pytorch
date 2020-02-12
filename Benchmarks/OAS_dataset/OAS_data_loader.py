@@ -14,13 +14,23 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-'):
+def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-', gapped=True, pad=True):
     aa_list = list(aa_list)
-    X = np.zeros((len(data), len(data[0])), dtype=int)
+    X = []
+    if not gapped:
+        data = [item.replace('-', '') for item in data]
+
+    max_len_local = len(max(data, key=len))
     for i, seq in enumerate(data):
+        if pad == True:
+            temp = np.zeros(max_len_local, dtype=np.int)
+        else:
+            temp = np.zeros(len(seq), dtype=np.int)
         for j, s in enumerate(seq):
-            X[i, j] = aa_list.index(s)
+            temp[j] = aa_list.index(s)
+        X.append(temp)
     return X
+
 
 class OAS_Dataset(IterableDataset):
     def __init__(self, list_IDs, labels, input_type, gapped=True, seq_dir='./seq_db/'):
@@ -37,6 +47,7 @@ class OAS_Dataset(IterableDataset):
         self.input_type = input_type
         self.gapped = gapped
         self.seq_dir = seq_dir
+        self.max_len = 0
 
     def parse_file(self):
 
@@ -66,15 +77,17 @@ class OAS_Dataset(IterableDataset):
                 X = [item.replace('-', '') for item in X]
 
             X = encode_index(X)
+
+            max_len_local = len(max(X, key=len))
+            if max_len_local > self.max_len:
+                self.max_len = max_len_local
+
             y = [self.labels[ID] for _ in range(len(input_df))]
 
-            # print(len(X))
             yield zip(X, y)
 
     def get_stream(self):
         return chain.from_iterable(islice(self.parse_file(), len(self.list_IDs)))
-    #     m = islice(self.parse_file(), 5)
-    #     return m
 
     def __iter__(self):
         return self.get_stream()
@@ -84,11 +97,13 @@ class OAS_Dataset(IterableDataset):
 def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
-def OAS_data_loader(index_file, output_field, input_type, gapped=True, seq_dir='./Models_generation/Benchmarks/OAS_dataset/data/seq_db/'):
+
+def OAS_data_loader(index_file, output_field, input_type, species_type, num_files, gapped=True,
+                    seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
     index_df = pd.read_csv(index_file, sep='\t')
-    index_df = index_df[index_df.valid_entry_num>1]
-    train_df = index_df[index_df.Species=='human']
-    train_df = train_df[10:110]
+    index_df = index_df[index_df.valid_entry_num > 1]
+    train_df = index_df[index_df.Species == species_type]
+    train_df = train_df[11:num_files+11]
     print(train_df)
 
     # Datasets
@@ -102,6 +117,5 @@ def OAS_data_loader(index_file, output_field, input_type, gapped=True, seq_dir='
 
     # generators
     training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir)
-    # testing_set = OAS_Dataset(partition['test'], labels, input_type, gapped, seq_dir)
 
     return training_set
