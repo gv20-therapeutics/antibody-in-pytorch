@@ -1,6 +1,5 @@
-#from ...Utils.model import Model
-#from ...Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
-
+#from ..Utils.model import Model
+#from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
 from model import Model
 import numpy as np
 import pandas as pd
@@ -57,8 +56,8 @@ class DNN_classifier(Model):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], 
-                                              gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
+        #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], 
+        #                                      gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
         loss_func = self.objective()
         for e in range(saved_epoch, self.para_dict['epoch']):
             total_loss = 0
@@ -80,13 +79,13 @@ class DNN_classifier(Model):
                         nn.utils.clip_grad_norm_(param, max_norm = 3, norm_type=2)
                 optimizer.step()
                     
-                scheduler.step()
-
-            self.save_model('Epoch_' + str(e + 1), self.state_dict())
-            print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+                #scheduler.step()
+            if (e+1) % 10 == 0:
+                self.save_model('Epoch_' + str(e + 1), self.state_dict())
+                print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
             
-            labels = np.concatenate([i for _, i in data_loader])
-            _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
+                labels = np.concatenate([i for _, i in data_loader])
+                _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
     
     def evaluate(self, outputs, labels):
         y_pred = []

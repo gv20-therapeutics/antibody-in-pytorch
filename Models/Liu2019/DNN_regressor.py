@@ -1,6 +1,5 @@
-#from ...Utils.model import Model
-#from ...Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
-
+#from ..Utils.model import Model
+#from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
 from model import Model
 import numpy as np
 import pandas as pd
@@ -11,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch.optim as optim
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
 
 class DNN_regressor(Model):
     def __init__(self, para_dict, *args, **kwargs):
@@ -56,8 +55,8 @@ class DNN_regressor(Model):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], 
-                                              gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
+        #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], 
+        #                                      gamma=0.5)
         loss_func = self.objective()
 
         for e in range(saved_epoch, self.para_dict['epoch']):
@@ -79,22 +78,25 @@ class DNN_regressor(Model):
                         nn.utils.clip_grad_norm_(param, max_norm = 3, norm_type=2)
                 optimizer.step()
                     
-                scheduler.step()
-
-            self.save_model('Epoch_' + str(e + 1), self.state_dict())
-            print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+            #scheduler.step()
             
-            values = np.concatenate([i for _, i in data_loader])
-            self.evaluate(np.concatenate(outputs_train), values)
+            if (e+1) % 10 == 0:
+                self.save_model('Epoch_' + str(e + 1), self.state_dict())
+                print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+            
+                values = np.concatenate([i for _, i in data_loader])
+                self.evaluate(np.concatenate(outputs_train), values)
     
     def evaluate(self, outputs, values):
         y_pred = outputs.flatten()
         y_true = values.flatten()
         r2 = r2_score(y_true, y_pred)
+        mse = mean_squared_error(y_true, y_pred)
+        
+        print('R2 score = %.3f' % (r2))
+        print('MSE = %.3f' % (mse))
 
-        print('Test: R2 score = %.3f' % (r2))
-
-        return r2
+        return r2, mse
 
 #----------------------------------------------------------
 if __name__ == '__main__':
@@ -126,4 +128,4 @@ if __name__ == '__main__':
     model.fit(train_loader)
     output = model.predict(test_loader)
     labels = np.concatenate([i for _, i in test_loader])
-    r2 = model.evaluate(output, labels)
+    r2, mse = model.evaluate(output, labels)
