@@ -7,7 +7,9 @@ import json
 import numpy as np
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 import warnings
+
 warnings.filterwarnings("ignore")
+
 
 class Model(nn.Module):
 
@@ -77,12 +79,14 @@ class Model(nn.Module):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
-
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
+                                              gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
         for e in range(saved_epoch, self.para_dict['epoch']):
+            print('Epoch: %d: ' % (e + 1), end='')
             total_loss = 0
             for input in data_loader:
                 outputs_train = []
+                # print(len(input))
                 features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
@@ -95,7 +99,7 @@ class Model(nn.Module):
                 scheduler.step()
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
-            print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+            print('Loss=%.3f' % (total_loss))
 
     def predict(self, data_loader):
 
@@ -105,7 +109,7 @@ class Model(nn.Module):
         labels_test = []
         with torch.no_grad():
             for data in data_loader:
-
+                # print(data)
                 inputs, _ = data
                 outputs = self.forward(inputs)
                 all_outputs.append(outputs.detach().numpy())
@@ -119,7 +123,7 @@ class Model(nn.Module):
         # print(outputs.shape)
         # print(labels.shape)
         for a in outputs:
-            if a[0]>a[1]:
+            if a[0] > a[1]:
                 y_pred.append(0)
             else:
                 y_pred.append(1)
@@ -148,7 +152,7 @@ class Model(nn.Module):
         return 0
 
     def save_param(self, path=None):
-        if path==None:
+        if path == None:
             filepath = os.path.join(self.model_path, 'train_parameters.json')
         else:
             filepath = os.path.join(path, 'train_parameters.json')
@@ -164,16 +168,18 @@ class Model(nn.Module):
             return json.load(open(filepath, 'r'))
         return None
 
+    def collate_fn(batch):
+        return batch, [x for seq in batch for x in seq]
+
 
 if __name__ == '__main__':
-
     para_dict = {'num_samples': 1000,
                  'seq_len': 20,
                  'batch_size': 20,
                  'model_name': 'Model',
                  'optim_name': 'Adam',
                  'step_size': 10,
-                 'epoch': 50,
+                 'epoch': 2,
                  'learning_rate': 0.01}
 
     data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'])
@@ -184,3 +190,5 @@ if __name__ == '__main__':
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
     mat, acc, mcc = model.evaluate(output, labels)
+
+    print(para_dict)

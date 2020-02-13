@@ -14,11 +14,11 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-', gapped=True, pad=True):
+def encode_index(data, aa_list=AA_GP, pad=False):
     aa_list = list(aa_list)
     X = []
-    if not gapped:
-        data = [item.replace('-', '') for item in data]
+    # if not gapped:
+    #     data = [item.replace('-', '') for item in data]
 
     max_len_local = len(max(data, key=len))
     for i, seq in enumerate(data):
@@ -26,6 +26,7 @@ def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-', gapped=True, pad=True):
             temp = np.zeros(max_len_local, dtype=np.int)
         else:
             temp = np.zeros(len(seq), dtype=np.int)
+        # print(seq)
         for j, s in enumerate(seq):
             temp[j] = aa_list.index(s)
         X.append(temp)
@@ -33,7 +34,7 @@ def encode_index(data, aa_list='ACDEFGHIKLMNPQRSTVWY-', gapped=True, pad=True):
 
 
 class OAS_Dataset(IterableDataset):
-    def __init__(self, list_IDs, labels, input_type, gapped=True, seq_dir='./seq_db/'):
+    def __init__(self, list_IDs, labels, input_type, gapped=True, pad=False, seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
         '''
         list_IDs: file name (prefix) for the loader
         labels: a dictionary, specifying the output label for each file
@@ -48,6 +49,7 @@ class OAS_Dataset(IterableDataset):
         self.gapped = gapped
         self.seq_dir = seq_dir
         self.max_len = 0
+        self.pad = pad
 
     def parse_file(self):
 
@@ -76,11 +78,10 @@ class OAS_Dataset(IterableDataset):
             if not self.gapped:
                 X = [item.replace('-', '') for item in X]
 
-            X = encode_index(X)
-
-            max_len_local = len(max(X, key=len))
-            if max_len_local > self.max_len:
-                self.max_len = max_len_local
+            # if not self.gapped:
+            #     X = encode_index(X, aa_list=AA_LS, pad=self.pad)
+            # else:
+            #     X = encode_index(X, aa_list=AA_GP, pad=self.pad)
 
             y = [self.labels[ID] for _ in range(len(input_df))]
 
@@ -98,12 +99,12 @@ def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
 
-def OAS_data_loader(index_file, output_field, input_type, species_type, num_files, gapped=True,
+def OAS_data_loader(index_file, output_field, input_type, species_type, num_files, gapped=True, pad=False,
                     seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num > 1]
-    train_df = index_df[index_df.Species == species_type]
-    train_df = train_df[11:num_files+11]
+    train_df = index_df[index_df.Species.isin(species_type)]
+    train_df = train_df[500:num_files+500]
     print(train_df)
 
     # Datasets

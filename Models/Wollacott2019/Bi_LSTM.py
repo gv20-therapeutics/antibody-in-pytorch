@@ -314,8 +314,9 @@ if __name__ == '__main__':
     # To get the data from the OAS database files
     train_data = OAS_data_loader.OAS_data_loader(
         index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-        input_type='full_length', species_type='human', num_files=30)
+        input_type='full_length', species_type=['human'], num_files=30)
     train_x = [x for x, y in train_data]
+    train_x = OAS_data_loader.encode_index(data=train_x)
     train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True,
                                                collate_fn=collate_fn)
 
