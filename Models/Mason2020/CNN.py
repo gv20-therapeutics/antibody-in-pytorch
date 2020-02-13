@@ -26,7 +26,7 @@ class CNN_classifier(Model):
             self.fc_hidden_dim = 50
 
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels=20,
+        self.conv1 = nn.Conv1d(in_channels=21,
                                out_channels=self.para_dict['n_filter'],
                                kernel_size=self.para_dict['filter_size'],
                                stride=1, padding=0)
@@ -56,10 +56,10 @@ class CNN_classifier(Model):
 if __name__ == '__main__':
     para_dict = {'num_samples': 1000,
                  'seq_len': 13,
-                 'batch_size': 256,
+                 'batch_size': 10,
                  'model_name': 'CNN_Model',
                  'optim_name': 'Adam',
-                 'epoch': 50,
+                 'epoch': 5,
                  'learning_rate': 0.001,
                  'step_size': 10,
                  'n_filter': 400,
@@ -76,14 +76,15 @@ if __name__ == '__main__':
     # train_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse&Human_train_seq_full_length.csv.gz','rb'))
     train_data_human = OAS_data_loader.OAS_data_loader(
         index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-        input_type='full_length', species_type=['human','mouse'], num_files=30, gapped=False, pad=True)
+        input_type='full_length', species_type=['human','mouse'], num_files=3, gapped=False, pad=True)
     train_x = [x for x, y in train_data_human]
     para_dict['seq_len'] = len(max(train_x, key=len))
     train_y = [1 if y == 'human' else 0 for x, y in train_data_human]
-    train_x = OAS_data_loader.encode_index(data=train_x, aa_list='ACDEFGHIKLMNPQRSTVWY', pad=True) # pad the sequence
-    train_x = loader.encode_data(np.array(train_x), aa_list='ACDEFGHIKLMNPQRSTVWY')
+    # print(len(train_x), len(train_y))
+    train_x = OAS_data_loader.encode_index(data=train_x, pad=True) # pad the sequence
+    train_x = loader.encode_data(np.array(train_x), aa_list='0ACDEFGHIKLMNPQRSTVWY')
     train_loader, test_loader = loader.train_test_loader(np.array(train_x), np.array(train_y), test_size=0.3,
-                                                         batch_size=para_dict['batch_size'], sample=True)
+                                                         batch_size=para_dict['batch_size'], sample=True, random_state=100)
     # train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=False)
     model = CNN_classifier(para_dict)
     model.fit(train_loader)

@@ -21,16 +21,27 @@ class LSTM_RNN_classifier(Model):
             self.hidden_layer_num = 3
 
     def net_init(self):
-        self.lstm = nn.LSTM(20, self.para_dict['hidden_dim'], batch_first=False,
+        self.lstm = nn.LSTM(21, self.para_dict['hidden_dim'], batch_first=False,
                             num_layers=self.para_dict['hidden_layer_num'], dropout=self.para_dict['dropout_rate'])
         self.fc = nn.Linear(self.para_dict['hidden_dim'], 2)
 
     def forward(self, Xs):
         batch_size = len(Xs)
-        X = torch.FloatTensor(Xs)
-        X = X.permute(1, 0, 2)
-
-        out, _ = self.lstm(X)
+        Xs_len = []
+        Xs = np.array(Xs)
+        for a in Xs:
+            m = np.where(a == 0)[0]
+            if not list(m):
+                Xs_len.append(Xs.shape[1])
+            else:
+                Xs_len.append(m[0])
+        a = loader.encode_data(np.array(Xs, dtype=int), aa_list='0ACDEFGHIKLMNPQRSTVWY')
+        X = torch.FloatTensor(a)
+        # X = X.permute(1, 0, 2)
+        X = torch.nn.utils.rnn.pack_padded_sequence(X, torch.tensor(Xs_len), batch_first=True, enforce_sorted=False)
+        X, _ = self.lstm(X)
+        out, _ = torch.nn.utils.rnn.pad_packed_sequence(X, batch_first=True)
+        out = out.permute(1, 0, 2)
         out = out[-1, :, :].reshape(batch_size, -1)  # use the last output as input for next layer
         out = torch.sigmoid(self.fc(out))
 
@@ -41,10 +52,10 @@ class LSTM_RNN_classifier(Model):
 if __name__ == '__main__':
     para_dict = {'num_samples': 1000,
                  'seq_len': 10,
-                 'batch_size': 512,
+                 'batch_size': 10,
                  'model_name': 'LSTM_Model',
                  'optim_name': 'Adam',
-                 'epoch': 20,
+                 'epoch': 50,
                  'learning_rate': 0.001,
                  'step_size': 5,
                  'hidden_dim': 40,
@@ -62,11 +73,12 @@ if __name__ == '__main__':
     train_x = [x for x, y in train_data_human]
     para_dict['seq_len'] = len(max(train_x, key=len))
     train_y = [1 if y == 'human' else 0 for x, y in train_data_human]
+    # print(train_y)
     # print(len(train_x), len(train_y))
     train_x = OAS_data_loader.encode_index(data=train_x, aa_list='ACDEFGHIKLMNPQRSTVWY', pad=True)
-    train_x = loader.encode_data(np.array(train_x), aa_list='ACDEFGHIKLMNPQRSTVWY')
+    # train_x = loader.encode_data(np.array(train_x), aa_list='0ACDEFGHIKLMNPQRSTVWY')
     train_loader, test_loader = loader.train_test_loader(np.array(train_x), np.array(train_y), test_size=0.3,
-                                                         batch_size=para_dict['batch_size'], sample=True)
+                                                         batch_size=para_dict['batch_size'], sample=True, random_state=100)
 
     model = LSTM_RNN_classifier(para_dict)
     model.fit(train_loader)

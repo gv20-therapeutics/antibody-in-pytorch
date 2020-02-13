@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 from ...Utils.model import Model
+from sklearn.model_selection import train_test_split
 import pandas as pd
 from ...Benchmarks.OAS_dataset import OAS_data_loader
 import numpy as np
@@ -300,35 +301,37 @@ class LSTM_Bi(Model):
 
 
 if __name__ == '__main__':
-    para_dict = {'model_name': 'LSTM_Bi_full_length_5k',
+    para_dict = {'model_name': 'LSTM_Bi',
                  'optim_name': 'Adam',
                  'step_size': 100,
                  'epoch': 50,
-                 'batch_size': 5000,
+                 'batch_size': 5,
                  'learning_rate': 0.01,
                  'gapped': True,
                  'embedding_dim': 64,
                  'hidden_dim': 64,
+                 'random_state': 100,
                  'fixed_len': False}
 
     # To get the data from the OAS database files
     train_data = OAS_data_loader.OAS_data_loader(
         index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-        input_type='full_length', species_type=['human'], num_files=30)
-    train_x = [x for x, y in train_data]
-    train_x = OAS_data_loader.encode_index(data=train_x)
-    train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=True,
+        input_type='full_length', species_type=['human'], num_files=2)
+    x = [x for x, y in train_data]
+    y = [0 if y=='human' else 1 for x, y in train_data]
+    x = OAS_data_loader.encode_index(data=x)
+    X_train, X_test, y_train, y_test = train_test_split(x, np.array(y), test_size=0.3, shuffle=True,
+                                                        random_state=para_dict['random_state'])
+    train_loader = torch.utils.data.DataLoader(X_train, batch_size=para_dict['batch_size'], drop_last=True,
                                                collate_fn=collate_fn)
-
-    # To get the data from the train file
-    # train_data = pd.read_csv('./Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv', sep='\t')
-    # train_x = OAS_data_loader.encode_index(data=train_data['seq'].values)
-    # train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=False, collate_fn=collate_fn)
+    test_loader = torch.utils.data.DataLoader(X_test, collate_fn=collate_fn)
 
     para_dict['in_dim'] = len(aa2id_i[para_dict['gapped']])
     para_dict['out_dim'] = len(aa2id_o[para_dict['gapped']])
     model = LSTM_Bi(para_dict)
     model.fit(train_loader)
+    output = model.NLS_score(test_loader)
+    model.evaluate(output, y_test)
     output_human_train, output_human, output_rabbit, output_mouse, output_rhesus = model.roc_plot()
     model.plot_score_distribution(output_human_train, output_human, output_rabbit, output_mouse)
 

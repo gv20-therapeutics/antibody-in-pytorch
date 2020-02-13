@@ -34,7 +34,7 @@ class Model(nn.Module):
         if 'optim_name' not in para_dict:
             self.para_dict['optim_name'] = 'Adam'
 
-        self.model_path = os.path.join(self.work_path, self.para_dict['model_name'])
+        self.model_path = os.path.join(self.work_path, self.para_dict['model_name']+'_'+str(self.para_dict['batch_size'])+'_'+str(self.para_dict['epoch']))
         self.save_path = os.path.join(self.model_path, 'model')
 
         if not os.path.exists(self.work_path):

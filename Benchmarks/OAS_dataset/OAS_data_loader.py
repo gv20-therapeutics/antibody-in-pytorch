@@ -17,16 +17,16 @@ AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 def encode_index(data, aa_list=AA_GP, pad=False):
     aa_list = list(aa_list)
     X = []
-    # if not gapped:
-    #     data = [item.replace('-', '') for item in data]
 
     max_len_local = len(max(data, key=len))
+    if pad==True:
+        aa_list = list(AA_LS)
+        aa_list.insert(0, '0')
     for i, seq in enumerate(data):
         if pad == True:
             temp = np.zeros(max_len_local, dtype=np.int)
         else:
             temp = np.zeros(len(seq), dtype=np.int)
-        # print(seq)
         for j, s in enumerate(seq):
             temp[j] = aa_list.index(s)
         X.append(temp)
@@ -34,7 +34,7 @@ def encode_index(data, aa_list=AA_GP, pad=False):
 
 
 class OAS_Dataset(IterableDataset):
-    def __init__(self, list_IDs, labels, input_type, gapped=True, pad=False, seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
+    def __init__(self, list_IDs, labels, input_type, gapped=True, seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
         '''
         list_IDs: file name (prefix) for the loader
         labels: a dictionary, specifying the output label for each file
@@ -49,7 +49,6 @@ class OAS_Dataset(IterableDataset):
         self.gapped = gapped
         self.seq_dir = seq_dir
         self.max_len = 0
-        self.pad = pad
 
     def parse_file(self):
 

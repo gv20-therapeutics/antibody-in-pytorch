@@ -30,8 +30,8 @@ def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
 
-def train_test_loader(x, y=None, test_size=0.3, batch_size=16, sample=None):
-    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=test_size, shuffle=True)
+def train_test_loader(x, y=None, test_size=0.3, batch_size=16, sample=None, random_state=100):
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=test_size, shuffle=True, random_state=random_state)
 
     # Balanced sampler
     train_y = np.array(y_train)
