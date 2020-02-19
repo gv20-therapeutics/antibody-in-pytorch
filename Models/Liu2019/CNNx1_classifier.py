@@ -118,6 +118,67 @@ class CNN_classifier(Model):
             
         return Xs
 
+    def forward4optim_2(self, Xs):
+        
+        # turns off the gradient descent for all params
+        for param in self.parameters():
+            param.requires_grad = False
+        
+        batch_size = len(Xs)
+
+        X = torch.FloatTensor(Xs)
+        X = X.permute(0,2,1)
+        self.X_variable = torch.autograd.Variable(X, requires_grad = True)
+        
+        out = self.conv1(self.X_variable)
+        out = self.pool(out)
+        out = out.reshape(batch_size, -1)
+        out = F.relu(self.fc1(out))
+        #out = torch.sigmoid(self.fc2(out))
+        out = self.fc2(out)
+        
+        return out
+   
+    def optimization_2(self, seed_seqs, labels, step_size, interval):
+        
+        buff_range = 10
+        best_activations = torch.tensor(np.asarray([-100000.0]*len(seed_seqs)),dtype=torch.float)
+        Xs = seed_seqs
+        count = 0
+        mask=torch.tensor(np.array([False for i in range(len(seed_seqs))]))
+        holdcnt = torch.zeros(len(seed_seqs))
+        while True:
+            count += 1
+
+            for i in range(interval):
+                out = self.forward4optim_2(Xs)
+                act = out[:,1]
+                self.X_variable.grad = torch.zeros(self.X_variable.shape)
+                act.sum().backward()
+                grad = self.X_variable.grad
+                grad[mask] = 0
+                Xs = (self.X_variable + grad * step_size).permute(0,2,1)
+                
+            position_mat = Xs.argmax(dim = 1).unsqueeze(dim=1)
+            Xs = torch.zeros(Xs.shape).scatter_(1, position_mat, 1)
+            
+            act = self.forward4optim_2(Xs)[:,1]
+            tmp_act = act.clone()
+            tmp_act[mask] = -100000.0
+            improve = (tmp_act > best_activations)
+            if sum(improve)>0:
+                best_activations[improve] = act[improve]
+            holdcnt[improve] = 0
+            holdcnt[~improve]=holdcnt[~improve]+1
+            mask = (holdcnt>=buff_range)
+            
+            print('count: %s, improved: %s, mask: %s'%(count,sum(improve).item(),sum(mask).item()))
+            if sum(mask)==len(seed_seqs) or count>1000:
+                break           
+                
+        return Xs
+
+
     def fit(self, data_loader):
 
         self.net_init()
@@ -258,9 +319,15 @@ if __name__ == '__main__':
     seed_seqs, labels = next(iter(train_loader))
     new_seqs = prev_model.optimization(seed_seqs, labels, 
                                        step_size = 0.001, interval = 10, iteration = 1)
+
+
+    new_seqs_2 = prev_model.optimization_2(seed_seqs, labels, 
+                                       step_size = 0.01, interval = 80)
     # check sequence identity
     new_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
-    batch.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
+    seed_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
+
+    new_seqs_2.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
     
     
     
