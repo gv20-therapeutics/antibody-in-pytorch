@@ -317,10 +317,6 @@ if __name__ == '__main__':
                  'random_state': 100,
                  'fixed_len': False}
 
-    # output_human_train, output_human, output_rabbit, output_mouse, output_rhesus = model.roc_plot()
-    # model.plot_score_distribution(output_human_train, output_human, output_rabbit, output_mouse)
-    #
-    # print(para_dict)
 
     train_loader, test_loader = loader.synthetic_data_loader(num_samples=para_dict['num_samples'],
                                                              seq_len=para_dict['seq_len'],
@@ -328,8 +324,6 @@ if __name__ == '__main__':
                                                              batch_size=para_dict['batch_size'])
     model = LSTM_Bi(para_dict)
     model.fit(train_loader)
-    # print(test_loader)
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
-    # len(labels)
     mat, acc, mcc = model.evaluate(output, labels)

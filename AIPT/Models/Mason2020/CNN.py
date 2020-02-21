@@ -24,11 +24,11 @@ class CNN_classifier(Model):
             self.para_dict['gapped'] = False
         if 'pad' not in para_dict:
             self.para_dict['pad'] = True
-
-        self.in_channels = 22 if self.para_dict['gapped'] == True else 21
+        if 'in_channels' not in self.para_dict:
+            self.para_dict['in_channels'] = 22 if self.para_dict['gapped'] == True else 21
 
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels=self.in_channels,
+        self.conv1 = nn.Conv1d(in_channels=self.para_dict['in_channels'],
                                out_channels=self.para_dict['n_filter'],
                                kernel_size=self.para_dict['filter_size'],
                                stride=1, padding=0)
@@ -67,27 +67,14 @@ if __name__ == '__main__':
                  'filter_size': 3,
                  'fc_hidden_dim': 50,
                  'gapped': False,
-                 'dropout_rate': 0.5}
+                 'dropout_rate': 0.5,
+                 'in_channels':20}
 
     # For synthetic data
     data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'])
     data = loader.encode_data(data)
     train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
 
-    # # For OAS database
-    # # train_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse&Human_train_seq_full_length.csv.gz','rb'))
-    # train_data_human = OAS_data_loader.OAS_data_loader(
-    #     index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-    #     input_type='full_length', species_type=['human','mouse'], num_files=3, gapped=False, pad=True)
-    # train_x = [x for x, y in train_data_human]
-    # para_dict['seq_len'] = len(max(train_x, key=len))
-    # train_y = [1 if y == 'human' else 0 for x, y in train_data_human]
-    # # print(len(train_x), len(train_y))
-    # train_x = OAS_data_loader.encode_index(data=train_x, pad=True) # pad the sequence
-    # train_x = loader.encode_data(np.array(train_x), aa_list='0ACDEFGHIKLMNPQRSTVWY')
-    # train_loader, test_loader = loader.train_test_loader(np.array(train_x), np.array(train_y), test_size=0.3,
-    #                                                      batch_size=para_dict['batch_size'], sample=True, random_state=100)
-    # # train_loader = torch.utils.data.DataLoader(train_x, batch_size=para_dict['batch_size'], drop_last=False)
     model = CNN_classifier(para_dict)
     model.fit(train_loader)
     output = model.predict(test_loader)
