@@ -19,8 +19,9 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.para_dict = para_dict
-        self.work_path = os.path.join(os.getcwd(), 'work')
 
+        if 'work_path' not in para_dict:
+            self.para_dict['work_path'] = os.path.join(os.getcwd(), 'work')
         if 'model_name' not in para_dict:
             self.para_dict['model_name'] = 'Model'
         if 'seq_len' not in para_dict:
@@ -36,6 +37,7 @@ class Model(nn.Module):
         if 'optim_name' not in para_dict:
             self.para_dict['optim_name'] = 'Adam'
 
+        self.work_path = para_dict['work_path']
         self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
             self.para_dict['batch_size']) + '_' + str(self.para_dict['epoch']))
         self.save_path = os.path.join(self.model_path, 'model')
@@ -123,8 +125,6 @@ class Model(nn.Module):
     def evaluate(self, outputs, labels):
 
         y_pred = []
-        # print(outputs.shape)
-        # print(labels.shape)
         for a in outputs:
             if a[0] > a[1]:
                 y_pred.append(0)
@@ -136,9 +136,9 @@ class Model(nn.Module):
         acc = accuracy_score(y_true, y_pred)
         mcc = matthews_corrcoef(y_true, y_pred)
 
-        print('Test: ')
+        print('Confusion matrix: ')
         print(mat)
-        print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
+        print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
 
         return mat, acc, mcc
 

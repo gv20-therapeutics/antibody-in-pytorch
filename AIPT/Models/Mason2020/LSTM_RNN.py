@@ -23,11 +23,13 @@ class LSTM_RNN_classifier(Model):
             self.fixed_len = True
         if 'gapped' not in para_dict:
             self.para_dict['gapped'] = False
-        self.in_channels = 22 if self.para_dict['gapped'] == True else 21
-        if self.para_dict['gapped'] == True:
-            self.aa_list = '0' + AA_GP
+
+        if para_dict['gapped']:
+            self.aa_list = AA_GP # TODO: why use '0'+AA_GP in the old version?
         else:
-            self.aa_list = '0' + AA_LS
+            self.aa_list = AA_LS
+        self.in_channels = len(self.aa_list)
+
 
     def net_init(self):
         self.lstm = nn.LSTM(self.in_channels, self.para_dict['hidden_dim'], batch_first=False,
@@ -67,9 +69,7 @@ class LSTM_RNN_classifier(Model):
 
         return out
 
-
-# --------------------------------------------------------------
-if __name__ == '__main__':
+def test():
     para_dict = {'num_samples': 1000,
                  'seq_len': 10,
                  'batch_size': 10,
@@ -83,13 +83,18 @@ if __name__ == '__main__':
                  'dropout_rate': 0.5,
                  'fixed_len': True}
 
-    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'])
+    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'], aa_list=AA_LS)
     data = loader.encode_data(data)
     train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
+
+    print('Parameters are', para_dict)
     model = LSTM_RNN_classifier(para_dict)
+    print('Training...')
     model.fit(train_loader)
+    print('Testing...')
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
-    mat, acc, mcc = model.evaluate(output, labels)
+    model.evaluate(output, labels)
 
-    print(para_dict)
+if __name__ == '__main__':
+    test()

@@ -4,7 +4,6 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
-from torch.utils.data import Dataset
 
 from ...Benchmarks.OAS_dataset import OAS_data_loader
 from ...Utils import loader
@@ -295,14 +294,14 @@ class LSTM_Bi(Model):
         acc = accuracy_score(y_true, y_pred)
         mcc = matthews_corrcoef(y_true, y_pred)
 
-        print('Test: ')
-        print(mat)
+        print('Confusion matrix: ')
+        print(mat) # TODO: why this mat is a large matrix?
         print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
 
         return mat, acc, mcc
 
 
-if __name__ == '__main__':
+def test():
     para_dict = {'model_name': 'LSTM_Bi',
                  'optim_name': 'Adam',
                  'num_samples': 1000,
@@ -317,19 +316,18 @@ if __name__ == '__main__':
                  'random_state': 100,
                  'fixed_len': False}
 
-    # output_human_train, output_human, output_rabbit, output_mouse, output_rhesus = model.roc_plot()
-    # model.plot_score_distribution(output_human_train, output_human, output_rabbit, output_mouse)
-    #
-    # print(para_dict)
-
     train_loader, test_loader = loader.synthetic_data_loader(num_samples=para_dict['num_samples'],
                                                              seq_len=para_dict['seq_len'],
                                                              aa_list='ACDEFGHIKLMNPQRSTVWY_', test_size=0.3,
                                                              batch_size=para_dict['batch_size'])
+    print('Parameters are', para_dict)
     model = LSTM_Bi(para_dict)
+    print('Training...')
     model.fit(train_loader)
-    # print(test_loader)
+    print('Testing...')
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
-    # len(labels)
-    mat, acc, mcc = model.evaluate(output, labels)
+    model.evaluate(output, labels)
+
+if __name__ == '__main__':
+    test()
