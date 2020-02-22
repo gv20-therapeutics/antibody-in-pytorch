@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.utils.data
 from sklearn.model_selection import train_test_split
+from sklearn.utils import class_weight
 
 AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 
@@ -36,12 +37,14 @@ def train_test_loader(x, y=None, test_size=0.3, batch_size=16, sample=None, rand
 
     # Balanced sampler
     train_y = np.array(y_train)
-    class_sample_count = [(train_y == 0).sum(), (train_y == 1).sum()]
-    weights = 1 / torch.Tensor(class_sample_count)
-    new_w = np.zeros(train_y.shape)
-    new_w[train_y == 0] = weights[0]
-    new_w[train_y == 1] = weights[1]
-    sampler = torch.utils.data.sampler.WeightedRandomSampler(new_w, batch_size)
+    # class_sample_count = [(train_y == 0).sum(), (train_y == 1).sum()]
+    # weights = 1 / torch.Tensor(class_sample_count)
+    # new_w = np.zeros(train_y.shape)
+    # new_w[train_y == 0] = weights[0]
+    # new_w[train_y == 1] = weights[1]
+    # sampler = torch.utils.data.sampler.WeightedRandomSampler(new_w, batch_size)
+    class_weigth= class_weight.compute_class_weight('balanced', np.unique(train_y), train_y)
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(class_weigth, batch_size)
 
     x_tensor = torch.from_numpy(X_train).float()
     y_tensor = torch.from_numpy(y_train).float()

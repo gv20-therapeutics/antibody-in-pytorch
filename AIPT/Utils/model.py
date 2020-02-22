@@ -126,10 +126,7 @@ class Model(nn.Module):
 
         y_pred = []
         for a in outputs:
-            if a[0] > a[1]:
-                y_pred.append(0)
-            else:
-                y_pred.append(1)
+            y_pred.append(np.argmax(a))
         y_true = np.array(labels).flatten()
         y_pred = np.array(y_pred)
         mat = confusion_matrix(y_true, y_pred)
