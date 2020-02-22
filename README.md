@@ -14,12 +14,12 @@ Recently, more people are realizing the use of machine learning, especially deep
 ## Download and install the package 
 
 ```bash
-git clone https://github.com/gv20-therapeutics/antibody-in-pytorch.git      # Clone antibody-in-pytorch source code
+git clone https://github.com/gv20-therapeutics/antibody-in-pytorch.git
 cd antibody-in-pytorch.git
 python setup.py install
 ```
 
-## Ways to run the machine learning models:
+## Ways to run the machine learning models
 
 Directly run from the command line:
 ```bash 
