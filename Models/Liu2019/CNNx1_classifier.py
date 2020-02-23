@@ -1,7 +1,7 @@
 #from ..Utils.model import Model
 #from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
 from model import Model 
-import numpy as np
+import numpy as np 
 import pandas as pd
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 
@@ -26,6 +26,13 @@ class CNN_classifier(Model):
             self.para_dict['fc_hidden_dim'] = 50
         if 'stride' not in para_dict:
             self.para_dict['stride'] = 2
+        if 'GPU' not in para_dict:
+            self.para_dict['GPU'] = False
+
+        #if self.para_dict['GPU']:
+        #    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        #else:
+        #    torch.set_default_tensor_type('torch.FloatTensor')
     
     def net_init(self):
         self.conv1 = nn.Conv1d(in_channels = 21, 
@@ -36,11 +43,19 @@ class CNN_classifier(Model):
         self.fc1 = nn.Linear(in_features = int(np.ceil((self.para_dict['seq_len']-self.para_dict['filter_size']) / self.para_dict['stride'])) * self.para_dict['n_filter'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
+        
+        if self.para_dict['GPU']:
+            self.cuda()
 
     def forward(self, Xs, _aa2id=None):
         batch_size = len(Xs)
-
-        X = torch.FloatTensor(Xs)
+        
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+        
+        #X = torch.FloatTensor(Xs)
         X = X.permute(0,2,1)
         
         out = F.dropout(self.conv1(X), p = self.para_dict['dropout_rate'])
@@ -54,7 +69,11 @@ class CNN_classifier(Model):
     def forward4predict(self, Xs):
         batch_size = len(Xs)
 
-        X = torch.FloatTensor(Xs)
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+            
         X = X.permute(0,2,1)
         
         out = self.conv1(X)
@@ -64,7 +83,7 @@ class CNN_classifier(Model):
         out = torch.sigmoid(self.fc2(out))
         
         return out
-    
+
     def forward4optim(self, Xs):
         
         # turns off the gradient descent for all params
@@ -73,60 +92,11 @@ class CNN_classifier(Model):
         
         batch_size = len(Xs)
 
-        X = torch.FloatTensor(Xs)
-        X = X.permute(0,2,1)
-        self.X_variable = torch.autograd.Variable(X, requires_grad = True)
-        
-        out = self.conv1(self.X_variable)
-        out = self.pool(out)
-        out = out.reshape(batch_size, -1)
-        out = F.relu(self.fc1(out))
-        out = torch.sigmoid(self.fc2(out))
-        
-        return out
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
 
-    def get_gradient(self, Xs, labels):
-        out = self.forward4optim(Xs)
-        
-        loss_func = self.objective()
-        optim_x_iter = [self.X_variable].__iter__()
-        optimizers = optim.RMSprop(optim_x_iter, lr=self.para_dict['learning_rate'])
-        loss = loss_func(out, torch.tensor(labels).type(torch.long))
-        loss.backward()
-
-        return self.X_variable.grad
-    
-    def optimization(self, seed_seqs, labels, step_size, interval, iteration):
-        
-        loss_func = self.objective()
-        for i in range(iteration):
-            Xs = seed_seqs
-            out = self.forward4optim(Xs)
-            optim_x_iter = [self.X_variable].__iter__()
-            
-            # gradient ascent
-            loss = loss_func(out, torch.tensor(labels).type(torch.long))
-            self.X_variable.grad = torch.zeros(self.X_variable.shape)
-            loss.backward()
-            Xs = (self.X_variable + self.X_variable.grad * step_size).permute(0,2,1)
-            
-            if i % interval == 0:
-                # projection to one-hot representation after K interval
-                position_mat = self.X_variable.argmax(dim = 1).unsqueeze(dim=1)
-                Xs = torch.zeros(self.X_variable.shape).scatter_(1, position_mat, 1)
-                Xs = Xs.permute(0,2,1)
-            
-        return Xs
-
-    def forward4optim_2(self, Xs):
-        
-        # turns off the gradient descent for all params
-        for param in self.parameters():
-            param.requires_grad = False
-        
-        batch_size = len(Xs)
-
-        X = torch.FloatTensor(Xs)
         X = X.permute(0,2,1)
         self.X_variable = torch.autograd.Variable(X, requires_grad = True)
         
@@ -138,8 +108,17 @@ class CNN_classifier(Model):
         out = self.fc2(out)
         
         return out
-   
-    def optimization_2(self, seed_seqs, labels, step_size, interval):
+
+    def get_gradient(self, Xs):
+        out = self.forward4optim(Xs)
+        
+        act = out[:,1]
+        self.X_variable.grad = torch.zeros(self.X_variable.shape)
+        act.sum().backward()
+
+        return self.X_variable.grad
+  
+    def optimization(self, seed_seqs, step_size, interval):
         
         buff_range = 10
         best_activations = torch.tensor(np.asarray([-100000.0]*len(seed_seqs)),dtype=torch.float)
@@ -151,7 +130,7 @@ class CNN_classifier(Model):
             count += 1
 
             for i in range(interval):
-                out = self.forward4optim_2(Xs)
+                out = self.forward4optim(Xs)
                 act = out[:,1]
                 self.X_variable.grad = torch.zeros(self.X_variable.shape)
                 act.sum().backward()
@@ -162,7 +141,7 @@ class CNN_classifier(Model):
             position_mat = Xs.argmax(dim = 1).unsqueeze(dim=1)
             Xs = torch.zeros(Xs.shape).scatter_(1, position_mat, 1)
             
-            act = self.forward4optim_2(Xs)[:,1]
+            act = self.forward4optim(Xs)[:,1]
             tmp_act = act.clone()
             tmp_act[mask] = -100000.0
             improve = (tmp_act > best_activations)
@@ -172,12 +151,11 @@ class CNN_classifier(Model):
             holdcnt[~improve]=holdcnt[~improve]+1
             mask = (holdcnt>=buff_range)
             
-            print('count: %s, improved: %s, mask: %s'%(count,sum(improve).item(),sum(mask).item()))
+            print('count: %d, improved: %d, mask: %d'%(count,sum(improve).item(),sum(mask).item()))
             if sum(mask)==len(seed_seqs) or count>1000:
                 break           
                 
         return Xs
-
 
     def fit(self, data_loader):
 
@@ -189,15 +167,21 @@ class CNN_classifier(Model):
         #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
 
         loss_func = self.objective()
+        
         for e in range(saved_epoch, self.para_dict['epoch']):
             total_loss = 0
             outputs_train = []
             for input in data_loader:
                 features, labels = input
                 logps = self.forward(features)
-                loss = loss_func(logps, torch.tensor(labels).type(torch.long))
+                if self.para_dict['GPU']:
+                    loss = loss_func(logps, labels.type(torch.long).cuda())
+                    outputs_train.append(logps.cpu().detach().numpy())
+                else:
+                    loss = loss_func(logps, torch.tensor(labels).type(torch.long))
+                    outputs_train.append(logps.detach().numpy())
+                    
                 total_loss += loss
-                outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -209,18 +193,6 @@ class CNN_classifier(Model):
                 
                 labels = np.concatenate([i for _, i in data_loader])
                 _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
-    
-    def fit4optim(self, seed_seq_loader, iteration, step):
-
-        loss_func = self.objective()
-        seed_seq, labels = seed_seq_loader
-        optimizer = optim.RMSprop(self.parameters(), lr=step)
-
-        for e in range(iteration):
-            logps = self.forward4optim(seed_seq)
-            loss = loss_func(logps, torch.tensor(labels).type(torch.long))
-            optimizer.zero_grad()
-            loss.backward()
 
     def evaluate(self, outputs, labels):
         y_pred = []
@@ -233,6 +205,7 @@ class CNN_classifier(Model):
                 y_pred.append(1)
         y_true = labels.flatten()
         y_pred = np.array(y_pred)
+        
         mat = confusion_matrix(y_true, y_pred)
         acc = accuracy_score(y_true, y_pred)
         mcc = matthews_corrcoef(y_true, y_pred)
@@ -253,10 +226,23 @@ class CNN_classifier(Model):
                 # print(data)
                 inputs, _ = data
                 outputs = self.forward4predict(inputs)
-                all_outputs.append(outputs.detach().numpy())
+                if self.para_dict['GPU']:
+                    all_outputs.append(outputs.cpu().detach().numpy())
+                else:
+                    all_outputs.append(outputs.detach().numpy())
                 # labels_test.append(np.array(l))
 
             return np.vstack(all_outputs)
+
+    def print_model_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print('Total number of parameters: %i' % params)
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name, param.data.shape)
+
+
 #----------------------------------------------------------
 if __name__ == '__main__':
     traindat = pd.read_csv('cdr3s.table.csv')
