@@ -47,7 +47,7 @@ class CNN_regressor(Model):
         batch_size = len(Xs)
 
         if self.para_dict['GPU']:
-            X = torch.cuda.FloatTensor(Xs)
+            X = Xs.cuda()
         else:
             X = torch.FloatTensor(Xs)
 
@@ -65,7 +65,7 @@ class CNN_regressor(Model):
         batch_size = len(Xs)
 
         if self.para_dict['GPU']:
-            X = torch.cuda.FloatTensor(Xs)
+            X = Xs.cuda()
         else:
             X = torch.FloatTensor(Xs)
 
@@ -87,14 +87,14 @@ class CNN_regressor(Model):
         batch_size = len(Xs)
 
         if self.para_dict['GPU']:
-            X = torch.cuda.FloatTensor(Xs)
+            X = Xs.cuda()
         else:
             X = torch.FloatTensor(Xs)
 
         X = X.permute(0,2,1)
         self.X_variable = torch.autograd.Variable(X, requires_grad = True)
         
-        out = self.conv1(X)
+        out = self.conv1(self.X_variable)
         out = self.pool(out)
         out = out.reshape(batch_size, -1)
         out = F.relu(self.fc1(out))
@@ -135,11 +135,11 @@ class CNN_regressor(Model):
             Xs = torch.zeros(Xs.shape).scatter_(1, position_mat, 1)
             
             act = self.forward4optim(Xs)
-            tmp_act = act.clone()
+            tmp_act = act.clone().flatten()
             tmp_act[mask] = -100000.0
             improve = (tmp_act > best_activations)
             if sum(improve)>0:
-                best_activations[improve] = act[improve]
+                best_activations[improve] = act[improve].flatten()
             holdcnt[improve] = 0
             holdcnt[~improve]=holdcnt[~improve]+1
             mask = (holdcnt>=buff_range)
@@ -176,7 +176,7 @@ class CNN_regressor(Model):
                 features, values = input
                 logps = self.forward(features)
                 if self.para_dict['GPU']:
-                    loss = loss_func(logps.squeeze(), labels.type(torch.long).cuda())
+                    loss = loss_func(logps.squeeze(), values.cuda())
                     outputs_train.append(logps.cpu().detach().numpy())
                 else:
                     loss = loss_func(logps.flatten(), torch.FloatTensor(values))
@@ -221,7 +221,7 @@ class CNN_regressor(Model):
         with torch.no_grad():
             for data in data_loader:
                 # print(data)
-                inputs, _, _, _ = data
+                inputs, _ = data
                 outputs = self.forward4predict(inputs)
                 if self.para_dict['GPU']:
                     all_outputs.append(outputs.cpu().detach().numpy())

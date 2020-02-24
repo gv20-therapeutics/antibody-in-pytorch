@@ -106,7 +106,7 @@ class CNNx2_classifier(CNN_classifier):
 
         self.X_variable = torch.autograd.Variable(X, requires_grad = True)
         
-        out = F.relu(self.conv1(X))
+        out = F.relu(self.conv1(self.X_variable))
         out = self.pool1(out)
         out = F.relu(self.conv2(out))
         out = self.pool2(out)

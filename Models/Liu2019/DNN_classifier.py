@@ -74,18 +74,56 @@ class DNN_classifier(CNN_classifier):
             X = Xs.cuda()
         else:
             X = torch.FloatTensor(Xs)
-
-        X = X.permute(0,2,1)
-
+        
+        X = torch.flatten(X, start_dim=1)
         self.X_variable = torch.autograd.Variable(X, requires_grad = True)
         
-        out = F.relu(self.fc1(X))
+        out = F.relu(self.fc1(self.X_variable))
         out = F.relu(self.fc2(out))
         #out = F.softmax(self.fc3(out))
         out = self.fc3(out)
         
         return out
+    
+    def optimization(self, seed_seqs, step_size, interval):
+        
+        buff_range = 10
+        best_activations = torch.tensor(np.asarray([-100000.0]*len(seed_seqs)),dtype=torch.float)
+        Xs = seed_seqs
+        count = 0
+        mask=torch.tensor(np.array([False for i in range(len(seed_seqs))]))
+        holdcnt = torch.zeros(len(seed_seqs))
+        while True:
+            count += 1
 
+            for i in range(interval):
+                out = self.forward4optim(Xs)
+                act = out[:,1]
+                self.X_variable.grad = torch.zeros(self.X_variable.shape)
+                act.sum().backward()
+                grad = self.X_variable.grad
+                grad[mask] = 0
+                
+                Xs = (self.X_variable + grad * step_size).reshape(seed_seqs.shape)
+                
+            position_mat = Xs.argmax(dim = 2).unsqueeze(dim=2)
+            Xs = torch.zeros(Xs.shape).scatter_(2, position_mat, 1)
+            
+            act = self.forward4optim(Xs)[:,1]
+            tmp_act = act.clone()
+            tmp_act[mask] = -100000.0
+            improve = (tmp_act > best_activations)
+            if sum(improve)>0:
+                best_activations[improve] = act[improve]
+            holdcnt[improve] = 0
+            holdcnt[~improve]=holdcnt[~improve]+1
+            mask = (holdcnt>=buff_range)
+            
+            print('count: %d, improved: %d, mask: %d'%(count,sum(improve).item(),sum(mask).item()))
+            if sum(mask)==len(seed_seqs) or count>1000:
+                break           
+                
+        return Xs
 
 #----------------------------------------------------------
 if __name__ == '__main__':
