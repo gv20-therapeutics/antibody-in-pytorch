@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from torch.utils.data import IterableDataset, DataLoader, Dataset
+from torch.utils.data import IterableDataset, DataLoader, Dataset, sampler
+from sklearn.utils import class_weight
 
 from ...Utils import loader
 
@@ -19,23 +20,27 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list=AA_GP, pad=False, gapped=False):
+def encode_index(data, aa_list=AA_GP, pad=True, gapped=True, max_len_local=None):
+
+    """
+    Convert the sequence into a matrix of index representing the amino acid
+    :return: A list of sequence lists
+    """
     aa_list = list(aa_list)
     X = []
 
-    max_len_local = len(max(data, key=len))
     if gapped == False:
         aa_list = list(AA_LS)
-    if pad == True:
-        aa_list.insert(0, '0')
     for i, seq in enumerate(data):
-        if pad == True:
-            temp = np.zeros(max_len_local, dtype=np.int)
-        else:
-            temp = np.zeros(len(seq), dtype=np.int)
-        for j, s in enumerate(seq):
-            temp[j] = aa_list.index(s)
-        X.append(temp)
+        if len(seq) <= max_len_local:
+            seq_i = np.zeros(len(seq), dtype=np.int)
+            for j, s in enumerate(seq):
+                seq_i[j] = aa_list.index(s)
+            if pad == True:
+                arr_create = (max_len_local - len(seq))
+                temp = np.full(arr_create, -1, dtype=np.int)
+                seq_i = np.concatenate([seq_i,temp])
+            X.append(seq_i)
     return X
 
 
@@ -55,7 +60,6 @@ class OAS_Dataset(IterableDataset):
         self.input_type = input_type
         self.gapped = gapped
         self.seq_dir = seq_dir
-        self.max_len = 0
 
     def parse_file(self):
 
@@ -84,14 +88,11 @@ class OAS_Dataset(IterableDataset):
             if not self.gapped:
                 X = [item.replace('-', '') for item in X]
 
-            # if not self.gapped:
-            #     X = encode_index(X, aa_list=AA_LS, pad=self.pad)
-            # else:
-            #     X = encode_index(X, aa_list=AA_GP, pad=self.pad)
-
-            y = [self.labels[ID] for _ in range(len(input_df))]
-
-            yield zip(X, y)
+            if self.labels is None:
+                yield X
+            else:
+                y = [self.labels[ID] for _ in range(len(input_df))]
+                yield zip(X, y)
 
     def get_stream(self):
         return chain.from_iterable(islice(self.parse_file(), len(self.list_IDs)))
@@ -99,66 +100,110 @@ class OAS_Dataset(IterableDataset):
     def __iter__(self):
         return self.get_stream()
 
+class OAS_preload(Dataset):
 
-def create_loader(input_data, pad=False, gapped=False, batch_size=100, model_name='Wollacott2019_Bi_LSTM'):
+    def __init__(self, list_IDs, labels, input_type, gapped, seq_dir, species_type, pad, seq_len=None):
+        '''
+        To read all the data at once and feed into the Dataloader
+        pad: Padding required (bool)
+        Other params similar to OAS_Dataset class
+        '''
+        self.labels = labels
+        self.list_IDs = list_IDs
+        self.input_type = input_type
+        self.gapped = gapped
+        self.seq_dir = seq_dir
+        self.species_type = species_type
+        self.seq_len = seq_len
+        self.input = []
+        self.output = []
 
-    # train_x = [x for a, (idx, data) in enumerate(input_data.items()) for x, y in data]
-    train_x = [x for x,y in input_data]
-    seq_len = len(max(train_x, key=len))
-    le = LabelEncoder()
-    train_y = [y for x, y in input_data]
-    train_y = le.fit_transform(train_y)
-    #for a, (idx, data) in enumerate(input_data.items())
-    train_x = encode_index(data=train_x, pad=pad, gapped=gapped)  # pad the sequence
+        dataset = OAS_Dataset(list_IDs, labels, input_type, gapped, seq_dir=seq_dir)
+        le = LabelEncoder()
+        le.fit(species_type)
 
-    print(model_name)
-    if model_name is 'Mason2020_CNN':
-        if gapped==True:
-            aa_list = '0'+AA_GP
-        else:
-            aa_list = '0'+AA_LS
-        train_x = loader.encode_data(np.array(train_x), aa_list=aa_list)
+        for z in dataset.parse_file():
+            train_x, train_y = zip(*z)
+            train_y = le.transform(train_y)
+            self.input.extend(train_x)
+            self.output.extend(train_y)
 
-    if model_name is 'Wollacott2019_Bi_LSTM':
-        print('I am here in the Bi LSTM')
-        X_train, X_test, y_train, y_test = train_test_split(train_x, np.array(train_y), test_size=0.3, shuffle=True,
-                                                            random_state=100)
-        train_loader = DataLoader(X_train, batch_size=batch_size, drop_last=True,
-                                  collate_fn=collate_fn)
-        test_loader = DataLoader(X_test, collate_fn=collate_fn)
-        return train_loader, test_loader, y_test
+        self.input = encode_index(data=self.input, pad=pad, gapped=gapped, max_len_local = self.seq_len)
 
-    print('I am here')
-    train_loader, test_loader = loader.train_test_loader(np.array(train_x), np.array(train_y), test_size=0.3,
-                                                             batch_size=batch_size, sample=True, random_state=100)
+    def __len__(self):
+        return len(self.input)
 
-    return train_loader, test_loader, seq_len
+    def __getitem__(self, idx):
+        X = self.input[idx]
+        y = self.output[idx]
 
+        return X, y
 
-# -------------------------------
 def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
-
-def OAS_data_loader(index_file, output_field, input_type, species_type, num_files=30, gapped=True,
-                    seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
+def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
+                    pad=False, batch_size=500, model_name='Wollacott2019_Bi_LSTM',
+                    seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
+    """
+    Create the train and test df
+    return: Train and test loader
+    """
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num > 1]
-    train_df = index_df[index_df.Species.isin(species_type)]
-    train_df = train_df.iloc[::-1]
-    train_df = train_df[:60]
-    print(train_df)
+    list_df = index_df[index_df.Species.isin(species_type)]
+    list_df.sort_values(by=['Species'])
+    list_df = list_df[::-1]
+    list_df = list_df[:50]
 
+    # Get the maximum length of a sequence
+    dataset = OAS_Dataset(list_df['file_name'].values, labels=None, input_type=input_type, gapped=gapped, seq_dir=seq_dir)
+    input = []
+    for z in dataset.parse_file():
+        input.extend(z)
+    seq_len = len(max(input, key=len))
+
+    train_split_df = pd.DataFrame()
+    test_split_df = pd.DataFrame()
+    ls_ls = [[a] for a in species_type]
+
+    for a in ls_ls:
+        temp_df = list_df.copy()
+        df = temp_df[temp_df.Species.isin(a)]
+        df_copy = df.copy()
+        temp_train = df_copy.sample(frac=0.7)
+        train_split_df = train_split_df.append(temp_train, ignore_index=True)
+        temp_test = df_copy.drop(temp_train.index)
+        test_split_df = test_split_df.append(temp_test, ignore_index=True)
+
+    print('Training data',train_split_df)
+    print('Testing data',test_split_df)
     # Datasets
     if output_field in valid_fields:
-        labels = dict(zip(index_df['file_name'].values, index_df[output_field].values))
+        labels_train = dict(zip(train_split_df['file_name'].values, train_split_df[output_field].values))
+        labels_test = dict(zip(test_split_df['file_name'].values, test_split_df[output_field].values))
     else:
         print('invalid output type!')
         return
 
-    partition = {'train': train_df['file_name'].values, 'test': index_df['file_name'].values}  # IDs, to be done!
+    partition = {'train': train_split_df['file_name'].values, 'test': test_split_df['file_name'].values}  # IDs, to be done!
 
     # generators
-    training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
+    # training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
+    training_set = OAS_preload(partition['train'], labels_train, input_type, gapped, seq_dir=seq_dir,
+                               species_type=species_type, pad=pad, seq_len=seq_len)
+    testing_set = OAS_preload(partition['test'], labels_test, input_type, gapped, seq_dir=seq_dir,
+                               species_type=species_type, pad=pad, seq_len=seq_len)
 
-    return training_set
+    # Balanced Sampler for the loader
+    class_weigth = class_weight.compute_class_weight('balanced', np.unique(training_set.output), training_set.output)
+    sample = sampler.WeightedRandomSampler(class_weigth, batch_size)
+
+    # Train and test loaders
+    if model_name == 'Wollacott2019_Bi_LSTM':
+        train_loader = DataLoader(training_set.input, batch_size=batch_size, sampler=sample, drop_last=True, collate_fn=collate_fn)
+    else:
+        train_loader = DataLoader(training_set, batch_size=batch_size, sampler=sample, drop_last=True)
+    test_loader = DataLoader(testing_set)
+
+    return train_loader, test_loader, seq_len
