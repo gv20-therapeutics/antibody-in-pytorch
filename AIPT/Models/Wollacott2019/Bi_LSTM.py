@@ -25,6 +25,10 @@ aa2id_i = {True: dict(zip(vocab_i[True], list(range(len(vocab_i[True]))))),
 id2aa_i = {True: dict(zip(list(range(len(vocab_i[True]))), vocab_i[True])),
            False: dict(zip(list(range(len(vocab_i[False]))), vocab_i[False]))}
 
+
+def collate_fn(batch):
+    return batch, [x for seq in batch for x in seq]
+
 # --------------------------------------------------------------------------------------
 import torch
 import torch.nn as nn
@@ -184,7 +188,7 @@ class LSTM_Bi(Model):
     def objective(self):
         return nn.NLLLoss()
 
-    def NLS_score(self, test_loader):
+    def predict(self, test_loader):
 
         scores = []
         self.eval()
@@ -224,7 +228,7 @@ class LSTM_Bi(Model):
         train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
-        output_human_train = self.NLS_score(train_mm)
+        output_human_train = self.predict(train_mm)
 
         test_data = pkl.load(
             open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
@@ -232,7 +236,7 @@ class LSTM_Bi(Model):
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
-        output_human = self.NLS_score(test_loader)
+        output_human = self.predict(test_loader)
 
         test_data = pkl.load(
             open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
@@ -240,7 +244,7 @@ class LSTM_Bi(Model):
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
-        output_rabbit = self.NLS_score(test_loader)
+        output_rabbit = self.predict(test_loader)
 
         test_data = pkl.load(
             open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
@@ -248,7 +252,7 @@ class LSTM_Bi(Model):
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
-        output_mouse = self.NLS_score(test_loader)
+        output_mouse = self.predict(test_loader)
 
         test_data = pkl.load(
             open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
@@ -256,7 +260,7 @@ class LSTM_Bi(Model):
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
-        output_rhesus = self.NLS_score(test_loader)
+        output_rhesus = self.predict(test_loader)
 
         label = [-1 if a < 1000 else 1 for a in range(2000)]
         output = np.concatenate((output_human, output_rabbit), axis=0)
@@ -283,23 +287,6 @@ class LSTM_Bi(Model):
         plt.savefig(os.path.join(self.model_path, 'roc_curve'))
 
         return output_human_train, output_human, output_rabbit, output_mouse, output_rhesus
-
-    def evaluate(self, outputs, labels):
-        y_pred = []
-        for a in outputs:
-            y_pred.append(np.argmax(a))
-        y_true = np.array(labels).flatten()
-        y_pred = np.array(y_pred)
-        mat = confusion_matrix(y_true, y_pred)
-        acc = accuracy_score(y_true, y_pred)
-        mcc = matthews_corrcoef(y_true, y_pred)
-
-        print('Confusion matrix: ')
-        print(mat) # TODO: why this mat is a large matrix?
-        print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
-
-        return mat, acc, mcc
-
 
 def test():
     para_dict = {'model_name': 'LSTM_Bi',

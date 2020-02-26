@@ -19,13 +19,15 @@ class LSTM_RNN_classifier(Model):
             self.hidden_dim = 40
         if 'hidden_layer_num' not in para_dict:
             self.hidden_layer_num = 3
+        if 'num_classes' not in para_dict:
+            self.para_dict['num_classes'] = 2
         if 'fixed_len' not in para_dict:
             self.fixed_len = True
         if 'gapped' not in para_dict:
             self.para_dict['gapped'] = False
 
         if para_dict['gapped']:
-            self.aa_list = AA_GP # TODO: why use '0'+AA_GP in the old version?
+            self.aa_list = AA_GP
         else:
             self.aa_list = AA_LS
         self.in_channels = len(self.aa_list)
@@ -34,7 +36,7 @@ class LSTM_RNN_classifier(Model):
     def net_init(self):
         self.lstm = nn.LSTM(self.in_channels, self.para_dict['hidden_dim'], batch_first=False,
                             num_layers=self.para_dict['hidden_layer_num'], dropout=self.para_dict['dropout_rate'])
-        self.fc = nn.Linear(self.para_dict['hidden_dim'], 2)
+        self.fc = nn.Linear(self.para_dict['hidden_dim'], self.para_dict['num_classes'])
         self.fixed_len = self.para_dict['fixed_len']
         self.forward = self.forward_flen if self.fixed_len else self.forward_vlen
 
@@ -70,12 +72,12 @@ class LSTM_RNN_classifier(Model):
         return out
 
 def test():
-    para_dict = {'num_samples': 1000,
-                 'seq_len': 10,
-                 'batch_size': 10,
+    para_dict = {'num_samples': 10000,
+                 'seq_len': 100,
+                 'batch_size': 500,
                  'model_name': 'LSTM_Model',
                  'optim_name': 'Adam',
-                 'epoch': 5,
+                 'epoch': 50,
                  'learning_rate': 0.001,
                  'step_size': 5,
                  'hidden_dim': 40,
