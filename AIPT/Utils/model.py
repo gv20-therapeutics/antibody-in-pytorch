@@ -91,10 +91,10 @@ class Model(nn.Module):
             total_loss = 0
             for input in data_loader:
                 outputs_train = []
-                # print(len(input))
                 features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
+                # print(logps, labels)
                 loss = loss(logps, torch.tensor(labels).type(torch.long))
                 total_loss += loss
                 outputs_train.append(logps.detach().numpy())
@@ -172,7 +172,7 @@ class Model(nn.Module):
         return batch, [x for seq in batch for x in seq]
 
 
-if __name__ == '__main__':
+def test():
     para_dict = {'num_samples': 1000,
                  'seq_len': 20,
                  'batch_size': 20,
@@ -185,10 +185,15 @@ if __name__ == '__main__':
     data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'])
     data = loader.encode_data(data)
     train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=20)
+
+    print('Parameters are', para_dict)
     model = Model(para_dict)
+    print('Training...')
     model.fit(train_loader)
+    print('Testing...')
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
-    mat, acc, mcc = model.evaluate(output, labels)
+    model.evaluate(output, labels)
 
-    print(para_dict)
+if __name__ == '__main__':
+    test()
