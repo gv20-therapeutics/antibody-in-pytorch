@@ -11,20 +11,33 @@ Recently, more people are realizing the use of machine learning, especially deep
 * Numpy
 * Scikit-learn
 
-## Clone the repository to local machine
+## Download and install the package 
 
 ```bash
-git clone https://github.com/gv20-therapeutics/antibody-in-pytorch.git      # Clone antibody-in-pytorch source code
-cd gv20-therapeutics
+git clone https://github.com/gv20-therapeutics/antibody-in-pytorch.git
+cd antibody-in-pytorch.git
+python setup.py install
 ```
 
-## How to run?
+## Ways to run the machine learning models
 
-**Command to run:** python -m antibody-in-pytorch.(Name of the folder).(Name of the model)
-
+Directly run from the command line:
 ```bash 
-python -m antibody-in-pytorch.Models.Mason2020.CNN # Example to run Mason's CNN model
+AIPT --help
 ```
+Run from a local python script
+```bash 
+python runner.py --help
+```
+Run as a module
+```bash 
+python -m AIPT --help
+```
+Run from the entry point in the module
+```bash 
+python -m AIPT.entry_point --help
+```
+Run without any parameter will go through all the test() functions.
 
 ## Antibody datasets
 * SAAB and OAS [http://antibodymap.org/]
@@ -47,3 +60,4 @@ python -m antibody-in-pytorch.Models.Mason2020.CNN # Example to run Mason's CNN 
 * [Qingyang Ding](https://github.com/qid12)
 * [Suraj Gattani](https://github.com/suraj-gattani)
 * [Xihao Hu](https://github.com/huxihao)
+* [Yaowen Chen](https://github.com/achenge07)

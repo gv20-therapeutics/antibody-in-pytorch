@@ -1,14 +1,13 @@
-from torch.utils.data import Dataset
-from ...Utils.model import Model
-from sklearn.model_selection import train_test_split
-import pandas as pd
-from ...Benchmarks.OAS_dataset import OAS_data_loader
-import numpy as np
-from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
-import matplotlib.pyplot as plt
 import os
 import pickle as pkl
-import seaborn as sns
+
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
+
+from ...Benchmarks.OAS_dataset import OAS_data_loader
+from ...Utils import loader
+from ...Utils.model import Model
 
 # true if gapped else false
 vocab_o = {
@@ -25,11 +24,6 @@ aa2id_i = {True: dict(zip(vocab_i[True], list(range(len(vocab_i[True]))))),
            False: dict(zip(vocab_i[False], list(range(len(vocab_i[False])))))}
 id2aa_i = {True: dict(zip(list(range(len(vocab_i[True]))), vocab_i[True])),
            False: dict(zip(list(range(len(vocab_i[False]))), vocab_i[False]))}
-
-
-def collate_fn(batch):
-    return batch, [x for seq in batch for x in seq]
-
 
 # --------------------------------------------------------------------------------------
 import torch
@@ -56,6 +50,8 @@ class LSTM_Bi(Model):
     def net_init(self):
 
         # self.hidden_dim = hidden_dim
+        self.para_dict['in_dim'] = len(aa2id_i[self.para_dict['gapped']])
+        self.para_dict['out_dim'] = len(aa2id_o[self.para_dict['gapped']])
         self.word_embeddings = nn.Embedding(self.para_dict['in_dim'], self.para_dict['embedding_dim'])
         self.lstm_f = nn.LSTM(self.para_dict['embedding_dim'], self.para_dict['hidden_dim'], batch_first=True)
         self.lstm_b = nn.LSTM(self.para_dict['embedding_dim'], self.para_dict['hidden_dim'], batch_first=True)
@@ -69,7 +65,7 @@ class LSTM_Bi(Model):
         # batch_size = len(Xs)
         batch_size = len(Xs)
         # print(_aa2id)
-        _aa2id = aa2id_i[para_dict['gapped']]
+        _aa2id = aa2id_i[self.para_dict['gapped']]
 
         # pad <EOS> & <SOS>
         Xs_f = [[_aa2id['<SOS>']] + list(seq)[:-1] for seq in Xs]
@@ -120,7 +116,7 @@ class LSTM_Bi(Model):
 
     def forward_vlen(self, Xs):
         batch_size = len(Xs)
-        _aa2id = aa2id_i[para_dict['gapped']]
+        _aa2id = aa2id_i[self.para_dict['gapped']]
 
         # pad <EOS> & <SOS>
         Xs_f = [[_aa2id['<SOS>']] + list(seq)[:-1] for seq in Xs]
@@ -222,35 +218,40 @@ class LSTM_Bi(Model):
     def roc_plot(self):
 
         plt.figure()
-        data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
+        data = pkl.load(
+            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
         train_x = OAS_data_loader.encode_index(data=data['seq'].values)
         train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human_train = self.NLS_score(train_mm)
 
-        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(
+            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
         #                                                  np.vstack([i for _, i in test_loader]))
         output_human = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(
+            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_rabbit = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(
+            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
         #                                                     np.vstack([i for _, i in test_loader]))
         output_mouse = self.NLS_score(test_loader)
 
-        test_data = pkl.load(open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
+        test_data = pkl.load(
+            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
         test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
         test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
         # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
@@ -293,18 +294,20 @@ class LSTM_Bi(Model):
         acc = accuracy_score(y_true, y_pred)
         mcc = matthews_corrcoef(y_true, y_pred)
 
-        print('Test: ')
-        print(mat)
+        print('Confusion matrix: ')
+        print(mat) # TODO: why this mat is a large matrix?
         print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
 
-        # return mat, acc, mcc
+        return mat, acc, mcc
 
 
-if __name__ == '__main__':
+def test():
     para_dict = {'model_name': 'LSTM_Bi',
                  'optim_name': 'Adam',
+                 'num_samples': 1000,
+                 'seq_len': 20,
                  'step_size': 100,
-                 'epoch': 50,
+                 'epoch': 5,
                  'batch_size': 5,
                  'learning_rate': 0.01,
                  'gapped': True,
@@ -313,26 +316,18 @@ if __name__ == '__main__':
                  'random_state': 100,
                  'fixed_len': False}
 
-    # To get the data from the OAS database files
-    train_data = OAS_data_loader.OAS_data_loader(
-        index_file='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/OAS_meta_info.txt', output_field='Species',
-        input_type='full_length', species_type=['human'], num_files=2)
-    x = [x for x, y in train_data]
-    y = [0 if y=='human' else 1 for x, y in train_data]
-    x = OAS_data_loader.encode_index(data=x)
-    X_train, X_test, y_train, y_test = train_test_split(x, np.array(y), test_size=0.3, shuffle=True,
-                                                        random_state=para_dict['random_state'])
-    train_loader = torch.utils.data.DataLoader(X_train, batch_size=para_dict['batch_size'], drop_last=True,
-                                               collate_fn=collate_fn)
-    test_loader = torch.utils.data.DataLoader(X_test, collate_fn=collate_fn)
-
-    para_dict['in_dim'] = len(aa2id_i[para_dict['gapped']])
-    para_dict['out_dim'] = len(aa2id_o[para_dict['gapped']])
+    train_loader, test_loader = loader.synthetic_data_loader(num_samples=para_dict['num_samples'],
+                                                             seq_len=para_dict['seq_len'],
+                                                             aa_list='ACDEFGHIKLMNPQRSTVWY_', test_size=0.3,
+                                                             batch_size=para_dict['batch_size'])
+    print('Parameters are', para_dict)
     model = LSTM_Bi(para_dict)
+    print('Training...')
     model.fit(train_loader)
-    output = model.NLS_score(test_loader)
-    model.evaluate(output, y_test)
-    output_human_train, output_human, output_rabbit, output_mouse, output_rhesus = model.roc_plot()
-    model.plot_score_distribution(output_human_train, output_human, output_rabbit, output_mouse)
+    print('Testing...')
+    output = model.predict(test_loader)
+    labels = np.vstack([i for _, i in test_loader])
+    model.evaluate(output, labels)
 
-    print(para_dict)
+if __name__ == '__main__':
+    test()
