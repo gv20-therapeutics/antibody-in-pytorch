@@ -13,8 +13,9 @@ import pdb
 
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
+from CNNx1_classifier import CNN_classifier
 
-class DNN_classifier(Model):
+class DNN_classifier(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
         super(DNN_classifier, self).__init__(para_dict, *args, **kwargs)
 
@@ -29,10 +30,16 @@ class DNN_classifier(Model):
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc3 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
 
+        if self.para_dict['GPU']:
+            self.cuda()
+
     def forward(self, Xs, _aa2id=None):
         batch_size = len(Xs)
 
-        X = torch.FloatTensor(Xs)
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
         X = torch.flatten(X, start_dim=1)
         
         out = F.dropout(F.relu(self.fc1(X)), p = self.para_dict['dropout_rate'])
@@ -41,71 +48,82 @@ class DNN_classifier(Model):
 
         return out
 
-    def objective(self):
-        return nn.CrossEntropyLoss()
+    def forward4predict(self, Xs):
+        batch_size = len(Xs)
 
-    def optimizers(self):
-
-        return optim.RMSprop(self.parameters(), lr=self.para_dict['learning_rate'],
-                             eps=1e-6, alpha = 0.9) #rho=0.9, epsilon=1e-06)
-    
-    def fit(self, data_loader):
-
-        self.net_init()
-        saved_epoch = self.load_model()
-
-        self.train()
-        optimizer = self.optimizers()
-        #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], 
-        #                                      gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
-        loss_func = self.objective()
-        for e in range(saved_epoch, self.para_dict['epoch']):
-            total_loss = 0
-            outputs_train = []
-            for input in data_loader:
-                    
-                features, labels = input
-                logps = self.forward(features)
-                loss = loss_func(logps, torch.tensor(labels).type(torch.long)) 
-                total_loss += loss
-                outputs_train.append(logps.detach().numpy())
-                    
-                optimizer.zero_grad()
-                ### apply constraint on gradients ###
-                #pdb.set_trace()
-                loss.backward()
-                for name, param in self.state_dict().items():
-                    if name == 'fc1.weight' or name == 'fc2.weight':
-                        nn.utils.clip_grad_norm_(param, max_norm = 3, norm_type=2)
-                optimizer.step()
-                    
-                #scheduler.step()
-            if (e+1) % 10 == 0:
-                self.save_model('Epoch_' + str(e + 1), self.state_dict())
-                print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
             
-                labels = np.concatenate([i for _, i in data_loader])
-                _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
-    
-    def evaluate(self, outputs, labels):
-        y_pred = []
-        # print(outputs.shape)
-        # print(labels.shape)
-        for a in outputs:
-            if a[0]>a[1]:
-                y_pred.append(0)
-            else:
-                y_pred.append(1)
-        y_true = labels.flatten()
-        y_pred = np.array(y_pred)
-        mat = confusion_matrix(y_true, y_pred)
-        acc = accuracy_score(y_true, y_pred)
-        mcc = matthews_corrcoef(y_true, y_pred)
+        X = torch.flatten(X, start_dim=1)
+        
+        out = F.relu(self.fc1(X))
+        out = F.relu(self.fc2(out))
+        out = F.softmax(self.fc3(out))
+        return out
 
-        print('Test: ')
-        print(mat)
-        print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
-        return mat, acc, mcc
+    def forward4optim(self, Xs):
+        # turns off the gradient descent for all params
+        for param in self.parameters():
+            param.requires_grad = False
+        
+        batch_size = len(Xs)
+
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+        
+        X = torch.flatten(X, start_dim=1)
+        self.X_variable = torch.autograd.Variable(X, requires_grad = True)
+        
+        out = F.relu(self.fc1(self.X_variable))
+        out = F.relu(self.fc2(out))
+        #out = F.softmax(self.fc3(out))
+        out = self.fc3(out)
+        
+        return out
+    
+    def optimization(self, seed_seqs, step_size, interval):
+        
+        buff_range = 10
+        best_activations = torch.tensor(np.asarray([-100000.0]*len(seed_seqs)),dtype=torch.float)
+        Xs = seed_seqs
+        count = 0
+        mask=torch.tensor(np.array([False for i in range(len(seed_seqs))]))
+        holdcnt = torch.zeros(len(seed_seqs))
+        while True:
+            count += 1
+
+            for i in range(interval):
+                out = self.forward4optim(Xs)
+                act = out[:,1]
+                self.X_variable.grad = torch.zeros(self.X_variable.shape)
+                act.sum().backward()
+                grad = self.X_variable.grad
+                grad[mask] = 0
+                
+                Xs = (self.X_variable + grad * step_size).reshape(seed_seqs.shape)
+                
+            position_mat = Xs.argmax(dim = 2).unsqueeze(dim=2)
+            Xs = torch.zeros(Xs.shape).scatter_(2, position_mat, 1)
+            
+            act = self.forward4optim(Xs)[:,1]
+            tmp_act = act.clone()
+            tmp_act[mask] = -100000.0
+            improve = (tmp_act > best_activations)
+            if sum(improve)>0:
+                best_activations[improve] = act[improve]
+            holdcnt[improve] = 0
+            holdcnt[~improve]=holdcnt[~improve]+1
+            mask = (holdcnt>=buff_range)
+            
+            print('count: %d, improved: %d, mask: %d'%(count,sum(improve).item(),sum(mask).item()))
+            if sum(mask)==len(seed_seqs) or count>1000:
+                break           
+                
+        return Xs
 
 #----------------------------------------------------------
 if __name__ == '__main__':

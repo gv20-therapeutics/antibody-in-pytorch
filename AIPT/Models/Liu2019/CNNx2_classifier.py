@@ -10,8 +10,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pdb 
+from CNNx1_classifier import CNN_classifier
 
-class CNNx2_classifier(Model):
+class CNNx2_classifier(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
         super(CNNx2_classifier, self).__init__(para_dict, *args, **kwargs)
 
@@ -48,10 +49,17 @@ class CNNx2_classifier(Model):
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
         
+        if self.para_dict['GPU']:
+            self.cuda()
+        
     def forward(self, Xs, _aa2id=None):
         batch_size = len(Xs)
 
-        X = torch.FloatTensor(Xs)
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+            
         X = X.permute(0,2,1)
         
         out = F.relu(self.conv1(X))
@@ -64,55 +72,50 @@ class CNNx2_classifier(Model):
 
         return out
 
-    def fit(self, data_loader):
+    def forward4predict(self, Xs):
+        batch_size = len(Xs)
 
-        self.net_init()
-        saved_epoch = self.load_model()
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+        X = X.permute(0,2,1)
+        
+        out = F.relu(self.conv1(X))
+        out = self.pool1(out)
+        out = F.relu(self.conv2(out))
+        out = self.pool2(out)
+        out = out.reshape(batch_size, -1)
+        out = F.relu(self.fc1(out))
+        out = torch.sigmoid(self.fc2(out))
+        return out
 
-        self.train()
-        optimizer = self.optimizers()
-        #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
+    def forward4optim(self, Xs):
+        
+        # turns off the gradient descent for all params
+        for param in self.parameters():
+            param.requires_grad = False
+        
+        batch_size = len(Xs)
 
-        loss_func = self.objective()
-        for e in range(saved_epoch, self.para_dict['epoch']):
-            total_loss = 0
-            outputs_train = []
-            for input in data_loader:
-                features, labels = input
-                logps = self.forward(features)
-                loss = loss_func(logps, torch.tensor(labels).type(torch.long))
-                total_loss += loss
-                outputs_train.append(logps.detach().numpy())
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            #scheduler.step()
-            if (e+1) % 10 == 0:
-                self.save_model('Epoch_' + str(e + 1), self.state_dict())
-                print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
-                
-                labels = np.concatenate([i for _, i in data_loader])
-                _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
-    
-    def evaluate(self, outputs, labels):
-        y_pred = []
-        # print(outputs.shape)
-        # print(labels.shape)
-        for a in outputs:
-            if a[0]>a[1]:
-                y_pred.append(0)
-            else:
-                y_pred.append(1)
-        y_true = labels.flatten()
-        y_pred = np.array(y_pred)
-        mat = confusion_matrix(y_true, y_pred)
-        acc = accuracy_score(y_true, y_pred)
-        mcc = matthews_corrcoef(y_true, y_pred)
+        if self.para_dict['GPU']:
+            X = Xs.cuda()
+        else:
+            X = torch.FloatTensor(Xs)
+        X = X.permute(0,2,1)
 
-        print('Test: ')
-        print(mat)
-        print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
-        return mat, acc, mcc
+        self.X_variable = torch.autograd.Variable(X, requires_grad = True)
+        
+        out = F.relu(self.conv1(self.X_variable))
+        out = self.pool1(out)
+        out = F.relu(self.conv2(out))
+        out = self.pool2(out)
+        out = out.reshape(batch_size, -1)
+        out = F.relu(self.fc1(out))
+        #out = torch.sigmoid(self.fc2(out))
+        out = self.fc2(out)
+        
+        return out
 
 #----------------------------------------------------------
 if __name__ == '__main__':
