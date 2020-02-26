@@ -12,9 +12,9 @@ def main():
 
     parser.add_option('--num-samples', type=int, default=1000)
     parser.add_option('--seq-len', type=int, default=20)
-    parser.add_option('--batch-size', type=int, default=500)
-    parser.add_option('--dataset', type=str, default='Test')
-    parser.add_option('--model-name', type=str, default='All')
+    parser.add_option('--batch-size', type=int, default=5000)
+    parser.add_option('--dataset', type=str, default='OAS')
+    parser.add_option('--model-name', type=str, default='Wollacott2019_Bi_LSTM')
     parser.add_option('--optim-name', type=str, default='Adam')
     parser.add_option('--epoch', type=int, default=5)
     parser.add_option('--learning-rate', type=float, default=1e-3)
@@ -44,11 +44,15 @@ def main():
                  'hidden_layer_num': args.hidden_layer_num,
                  'hidden_dim': args.hidden_dim,
                  'embedding_dim': args.embedding_dim,
+                 'species_type': ['human', 'mouse', 'rabbit', 'rhesus'],
                  'fixed_len': False,
                  'gapped': True,
-                 'pad': True}
+                 'pad': False}
 
     if args.dataset == 'Test':
+        """
+        Runs all models or specific model on synthetic data
+        """
         if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':
             from .Models.Mason2020.CNN import test
             test()
@@ -60,58 +64,29 @@ def main():
             test()
 
     elif args.dataset == 'OAS':
+        """
+        Loads the OAS dataset and creates the train & test loader
+        Runs all models or specific model on OAS dataset
+        """
         from .Benchmarks.OAS_dataset import OAS_data_loader
-        input_data = OAS_data_loader.OAS_data_loader(index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
-                                                     output_field='Species', input_type='full_length',
-                                                     species_type=['human'], gapped=para_dict['gapped'],
-                                                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
+        train_loader, test_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info2.txt',
+                                                      output_field='Species', input_type='full_length',
+                                                      species_type=para_dict['species_type'], gapped=para_dict['gapped'],
+                                                      pad=para_dict['pad'],
+                                                      seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
 
-        if args.model_name == 'Mason2020_CNN' or args.model_name == 'All': # TODO: all codes below need to follow the same format as the Test case
-            from .Models import Mason2020
-            train_loader, test_loader, para_dict['seq_len'] = OAS_data_loader.create_loader(input_data,
-                                                                                            pad=para_dict['pad'],
-                                                                                            batch_size=args.batch_size,
-                                                                                            gapped=para_dict['gapped'],
-                                                                                            model_name=args.model_name)
-            para_dict['model_name'] = 'CNN_Model'
-            model = Mason2020.CNN.CNN_classifier(para_dict)
-            model.fit(train_loader)
-            output = model.predict(test_loader)
-            labels = np.vstack([i for _, i in test_loader])
-            model.evaluate(output, labels)
 
-        if args.model_name == 'Mason2020_LSTM_RNN':
-            from .Models import Mason2020
-            train_loader, test_loader, para_dict['seq_len'] = OAS_data_loader.create_loader(input_data,
-                                                                                            pad=para_dict['pad'],
-                                                                                            batch_size=args.batch_size,
-                                                                                            gapped=para_dict['gapped'],
-                                                                                            model_name=args.model_name)
-            para_dict['hidden_dim'] = 40
-            para_dict['model_name'] = 'LSTM_RNN'
-            model = Mason2020.LSTM_RNN.LSTM_RNN_classifier(para_dict)
-            model.fit(train_loader)
-            output = model.predict(test_loader)
-            labels = np.vstack([i for _, i in test_loader])
-            mat, acc, mcc = model.evaluate(output, labels)
+        if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_CNN
+            Test_Mason2020_CNN(para_dict, train_loader, test_loader)
 
-        elif args.model_name == 'Wollacott2019_Bi_LSTM':
-            from .Models import Wollacott2019
-            train_loader, test_loader, labels = OAS_data_loader.create_loader(input_data,
-                                                                              pad=para_dict['pad'],
-                                                                              batch_size=args.batch_size,
-                                                                              gapped=para_dict['gapped'],
-                                                                              model_name=args.model_name)
-            para_dict['model_name'] = 'Bi_LSTM'
-            model = Wollacott2019.Bi_LSTM.LSTM_Bi(para_dict)
-            model.fit(train_loader)
-            # output = model.predict(test_loader)
-            # labels = np.concatenate([i for _, i in test_loader])
-            # mat, acc, mcc = model.evaluate(output, labels)
-            output = model.NLS_score(test_loader)
-            # labels = np.vstack([i for _, i in test_loader])
-            # print(labels)
-            model.evaluate(output, labels)
+        if args.model_name == 'Mason2020_LSTM_RNN' or args.model_name == 'All':
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM_RNN
+            Test_Mason2020_LSTM_RNN(para_dict, train_loader, test_loader)
+
+        if args.model_name == 'Wollacott2019_Bi_LSTM':
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019_Bi_LSTM
+            Test_Wollacott2019_Bi_LSTM(para_dict, train_loader, test_loader)
     else:
         print('Please provide the dataset name using the --dataset parameter')
     exit(0)
