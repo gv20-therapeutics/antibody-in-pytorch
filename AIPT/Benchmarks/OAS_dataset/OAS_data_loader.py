@@ -20,7 +20,7 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list=AA_GP, pad=True, gapped=True, max_len_local=None):
+def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=np.inf):
 
     """
     Convert the sequence into a matrix of index representing the amino acid
