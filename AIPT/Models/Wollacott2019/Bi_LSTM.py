@@ -235,7 +235,9 @@ class LSTM_Bi(Model):
             dict_class['l'+str(int(a))].append(a)
 
         for i in range(len(self.para_dict['species_type'])-1):
-            label = np.concatenate((np.array(dict_class['l'+str(0)]), np.array(dict_class['l'+str(i+1)])), axis=0)
+            label1 = np.zeros(len(dict_class['l' + str(0)]),dtype=int)
+            label2 = np.ones(len(dict_class['l' + str(i+1)]), dtype=int)
+            label = np.concatenate((label1, label2), axis=0)
             output = np.concatenate((np.array(dict_class['o'+str(0)]), np.array(dict_class['o'+str(i+1)])), axis=0)
             tpr, fpr, _ = roc_curve(np.array(label), np.array(output))
             AUC_score = roc_auc_score(np.array(label), np.array(output))
