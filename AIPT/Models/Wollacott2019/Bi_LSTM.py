@@ -208,85 +208,45 @@ class LSTM_Bi(Model):
             scores.append(batch_scores[0])
         return np.array(scores)
 
-    def plot_score_distribution(self, output_human_train, output_human, output_rabbit, output_mouse):
+    def plot_score_distribution(self, dict_class):
 
         plt.figure()
-        plt.hist(output_human_train, histtype='step', normed=True, color='red', label='Human_train')
-        plt.hist(output_human, histtype='step', normed=True, color='orange', label='Human_test')
-        plt.hist(output_rabbit, histtype='step', normed=True, color='blue', label='Rabbit')
-        plt.hist(output_mouse, histtype='step', normed=True, color='green', label='Mouse')
+        colors = ['red','blue','green','yellow']
+        for i in range(len(self.para_dict['species_type'])):
+            plt.hist(dict_class['o'+str(i)], histtype='step', normed=True, color=colors[i], label=self.para_dict['species_type'][i])
         plt.legend()
         plt.savefig(os.path.join(self.model_path, 'score_plot'))
         plt.show()
 
-    def roc_plot(self):
+    def roc_plot(self, test_loader):
 
         plt.figure()
-        data = pkl.load(
-            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_train_seq_full_length.csv.gz', 'rb'))
-        train_x = OAS_data_loader.encode_index(data=data['seq'].values)
-        train_mm = torch.utils.data.DataLoader(train_x, collate_fn=collate_fn)
-        # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
-        #                                                  np.vstack([i for _, i in test_loader]))
-        output_human_train = self.predict(train_mm)
+        outputs = self.predict(test_loader)
+        colors = ['r','b','g']
+        labels = np.vstack([i for _, i in test_loader])
 
-        test_data = pkl.load(
-            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Human_test_seq_full_length.csv.gz', 'rb'))
-        test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
-        test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
-        # human_mat, human_acc, human_mcc = model.evaluate(model.predict(test_loader),
-        #                                                  np.vstack([i for _, i in test_loader]))
-        output_human = self.predict(test_loader)
+        dict_class = {}
+        for class_name in range(len(self.para_dict['species_type'])):
+            dict_class['o' + str(class_name)] = []
+            dict_class['l' + str(class_name)] = []
 
-        test_data = pkl.load(
-            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rabbit_test_seq_full_length.csv.gz', 'rb'))
-        test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
-        test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
-        # rabbit_mat, rabbit_acc, rabbit_mcc = model.evaluate(model.predict(test_loader),
-        #                                                     np.vstack([i for _, i in test_loader]))
-        output_rabbit = self.predict(test_loader)
+        for i, a in enumerate(labels):
+            dict_class['o'+str(int(a))].append(outputs[i])
+            dict_class['l'+str(int(a))].append(a)
 
-        test_data = pkl.load(
-            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Mouse_test_seq_full_length.csv.gz', 'rb'))
-        test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
-        test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
-        # mouse_mat, mouse_acc, mouse_mcc = model.evaluate(model.predict(test_loader),
-        #                                                     np.vstack([i for _, i in test_loader]))
-        output_mouse = self.predict(test_loader)
-
-        test_data = pkl.load(
-            open('./antibody-in-pytorch/Benchmarks/OAS_dataset/data/Rhesus_test_seq_full_length.csv.gz', 'rb'))
-        test_x = OAS_data_loader.encode_index(data=test_data['seq'].values)
-        test_loader = torch.utils.data.DataLoader(test_x, collate_fn=collate_fn)
-        # rhesus_mat, rhesus_acc, rhesus_mcc = model.evaluate(model.predict(test_loader),
-        #                                                     np.vstack([i for _, i in test_loader]))
-        output_rhesus = self.predict(test_loader)
-
-        label = [-1 if a < 1000 else 1 for a in range(2000)]
-        output = np.concatenate((output_human, output_rabbit), axis=0)
-        rabbit_fpr, rabbit_tpr, _ = roc_curve(np.array(label), np.array(output))
-        AUC_score_rabbit = roc_auc_score(np.array(label), np.array(output))
-        print('AUC score for rabbit ', AUC_score_rabbit)
-        plt.plot(rabbit_fpr, rabbit_tpr, 'r', label='rabbit(AUC=' + str(AUC_score_rabbit) + ')')
-
-        output = np.concatenate((output_human, output_mouse), axis=0)
-        mouse_fpr, mouse_tpr, _ = roc_curve(np.array(label), np.array(output))
-        AUC_score_mouse = roc_auc_score(np.array(label), np.array(output))
-        print('AUC score for mouse ', AUC_score_mouse)
-        plt.plot(mouse_fpr, mouse_tpr, 'g', label='mouse(AUC=' + str(AUC_score_mouse) + ')')
-
-        output = np.concatenate((output_human, output_rhesus), axis=0)
-        rhesus_fpr, rhesus_tpr, _ = roc_curve(np.array(label), np.array(output))
-        AUC_score_rhesus = roc_auc_score(np.array(label), np.array(output))
-        print('AUC score for rhesus ', AUC_score_rhesus)
-        plt.plot(rhesus_fpr, rhesus_tpr, 'b', label='rhesus(AUC=' + str(AUC_score_rhesus) + ')')
+        for i in range(len(self.para_dict['species_type'])-1):
+            label = np.concatenate((np.array(dict_class['l'+str(0)]), np.array(dict_class['l'+str(i+1)])), axis=0)
+            output = np.concatenate((np.array(dict_class['o'+str(0)]), np.array(dict_class['o'+str(i+1)])), axis=0)
+            tpr, fpr, _ = roc_curve(np.array(label), np.array(output))
+            AUC_score = roc_auc_score(np.array(label), np.array(output))
+            plt.plot(fpr, tpr, colors[i],label=str(self.para_dict['species_type'][i+1])+'(AUC=' + str(AUC_score) + ')')
 
         plt.xlabel('False positive rate')
         plt.ylabel('True positive rate')
         plt.legend()
         plt.savefig(os.path.join(self.model_path, 'roc_curve'))
 
-        return output_human_train, output_human, output_rabbit, output_mouse, output_rhesus
+        return dict_class
 
 def test():
     para_dict = {'model_name': 'LSTM_Bi',
@@ -301,7 +261,8 @@ def test():
                  'embedding_dim': 64,
                  'hidden_dim': 64,
                  'random_state': 100,
-                 'fixed_len': False}
+                 'fixed_len': False,
+                 'species': ['human','non-human']}
 
     train_loader, test_loader = loader.synthetic_data_loader(num_samples=para_dict['num_samples'],
                                                              seq_len=para_dict['seq_len'],
@@ -315,6 +276,8 @@ def test():
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
     model.evaluate(output, labels)
+    dict_class = model.roc_plot(test_loader)
+    model.plot_score_distribution(dict_class)
 
 if __name__ == '__main__':
     test()

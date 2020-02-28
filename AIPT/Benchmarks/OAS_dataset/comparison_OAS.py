@@ -38,8 +38,10 @@ def Test_Wollacott2019_Bi_LSTM(para_dict, train_loader, test_loader):
     print('Parameters: ', para_dict)
     model = Bi_LSTM.LSTM_Bi(para_dict)
     model.fit(train_loader)
-    output = model.predict(test_loader)
-    labels = np.vstack([i for _, i in test_loader])
-    model.evaluate(output, labels)
+    # output = model.predict(test_loader)
+    # labels = np.vstack([i for _, i in test_loader])
+    # model.evaluate(output, labels)
+    dict_class = model.roc_plot(test_loader)
+    model.plot_score_distribution(dict_class)
 
 
