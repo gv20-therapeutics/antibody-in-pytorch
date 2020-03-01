@@ -1,6 +1,5 @@
-#from ..Utils.model import Model
-#from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
-from model import Model
+from AIPT.Utils.model import Model
+from AIPT.Utils import loader
 import numpy as np
 import pandas as pd
 import pdb 
@@ -12,7 +11,7 @@ import torch.nn.functional as F
 
 import torch.optim as optim
 from sklearn.metrics import r2_score, mean_squared_error
-from CNNx1_regressor import CNN_regressor
+from AIPT.Model.Liu2019.CNNx1_regressor import CNN_regressor
 
 class CNNx2_regressor(CNN_regressor):
     def __init__(self, para_dict, *args, **kwargs):
@@ -119,17 +118,7 @@ class CNNx2_regressor(CNN_regressor):
         return out
 
 #----------------------------------------------------------
-if __name__ == '__main__':
-    traindat = pd.read_csv('cdr3s.table.csv')
-    MAX_LEN = 17
-    # exclude not_determined
-    dat = traindat.loc[traindat['enriched'] != 'not_determined']
-    x = dat['cdr3'].values
-    y_reg = dat['log10(R3/R2)'].values
-    # scale y_reg
-    y_reg_mean = np.mean(y_reg)
-    y_reg_std = np.std(y_reg)
-    y_reg_new = (y_reg - y_reg_mean) / y_reg_std
+def test():
 
     para_dict = {'seq_len':18,
               'batch_size':100,
@@ -145,11 +134,18 @@ if __name__ == '__main__':
               'dropout_rate':0.5,
               'stride':1}
 
-    X_dat = np.array([encode_data(item, gapped = True) for item in x])
-    train_loader, test_loader = train_test_loader(X_dat, np.array(y_class), batch_size=para_dict['batch_size'])
+    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], 
+                                      seq_len=para_dict['seq_len'], aa_list=aa_list, type = 'regressor')
+    data = loader.encode_data(data)
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
 
     model = CNNx2_regressor(para_dict)
     model.fit(train_loader)
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
     r2 = model.evaluate(output, labels)
+
+if __name__ == '__main__':
+    test() 
+
+

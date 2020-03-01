@@ -1,6 +1,5 @@
-#from ..Utils.model import Model
-#from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
-from model import Model
+from AIPT.Utils.model import Model
+from AIPT.Utils import loader
 import numpy as np
 import pandas as pd
 
@@ -241,17 +240,6 @@ class CNN_regressor(Model):
 
 #----------------------------------------------------------
 def test():
-    traindat = pd.read_csv('cdr3s.table.csv')
-    MAX_LEN = 17
-    # exclude not_determined
-    dat = traindat.loc[traindat['enriched'] != 'not_determined']
-    x = dat['cdr3'].values
-    y_reg = dat['log10(R3/R2)'].values
-    # scale y_reg
-    y_reg_mean = np.mean(y_reg)
-    y_reg_std = np.std(y_reg)
-    y_reg_new = (y_reg - y_reg_mean) / y_reg_std
-
     para_dict = {'batch_size':100,
              'seq_len':MAX_LEN,
               'model_name':'Seq_32x1_16',
@@ -263,38 +251,17 @@ def test():
               'filter_size':5,
               'fc_hidden_dim':16,
               'dropout_rate':0.5}
+                  
+    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], 
+                                      seq_len=para_dict['seq_len'], aa_list=aa_list, type = 'regressor')
+    data = loader.encode_data(data)
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
 
-    para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
-              'model_name':'Seq_64x1_16',
-              'optim_name':'Adam',
-              'epoch':20,
-              'learning_rate':0.001,
-              'step_size':5,
-              'n_filter':64,
-              'filter_size':5,
-              'fc_hidden_dim':16,
-              'dropout_rate':0.5}
-
-    para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
-              'model_name':'Seq_32x1_16_filt3',
-              'optim_name':'Adam',
-              'epoch':20,
-              'learning_rate':0.001,
-              'step_size':5,
-              'n_filter':32,
-              'filter_size':3,
-              'fc_hidden_dim':16,
-              'dropout_rate':0.5}
-
-    X_dat = np.array([encode_data(item, gapped = True, seq_len = para_dict['seq_len']) for item in x])
-    train_loader, test_loader = train_test_loader(X_dat, np.array(y_reg_new), batch_size=para_dict['batch_size'])
-    
     model = CNN_regressor(para_dict)
     model.fit(train_loader)
     output = model.predict(test_loader)
     labels = np.concatenate([i for _, i in test_loader])
     r2 = model.evaluate(output, labels)
 
-
+if __name__ == '__main__':
+    test() 

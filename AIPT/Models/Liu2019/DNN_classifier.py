@@ -1,6 +1,5 @@
-#from ..Utils.model import Model
-#from ..Benchmarks.Liu2019_enrichment.Liu2019_data_loader import train_test_loader, encode_data
-from model import Model
+from AIPT.Utils.model import Model
+from AIPT.Utils import loader
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
@@ -13,7 +12,7 @@ import pdb
 
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
-from CNNx1_classifier import CNN_classifier
+from AIPT.Model.Liu2019.CNNx1_classifier import CNN_classifier
 
 class DNN_classifier(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):

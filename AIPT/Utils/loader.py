@@ -72,21 +72,25 @@ def train_test_loader(x, y=None, test_size=0.3, batch_size=16, sample=None, rand
     return train_loader, test_loader
 
 
-def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3, batch_size=16):
+def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3, batch_size=16, type = 'classifier'):
     """
     Loaders for Wollacott model with collate function
     """
     aa_size = len(aa_list)
     data = []
-    out = np.zeros((num_samples), dtype=int)
     for i in range(num_samples):
         temp = []
         for j in range(seq_len):
             temp.append([np.random.randint(aa_size)])
         data.append(temp)
-    for i in range(num_samples):
-        if i < round(num_samples / 2):
-            out[i] = 1
+    
+    if type == 'classifier':
+        out = np.zeros((num_samples), dtype=int)
+        for i in range(num_samples):
+            if i < round(num_samples / 2):
+                out[i] = 1
+    elif type == 'regressor':
+        out = np.linspace(start = 0, stop = 1, num=num_samples)
 
     X_train, X_test, y_train, y_test = train_test_split(np.array(data), out, test_size=test_size, shuffle=True)
     x_tensor = torch.from_numpy(X_train)

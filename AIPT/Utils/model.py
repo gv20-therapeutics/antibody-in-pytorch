@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 
-from . import loader
+from AIPT.Utils import loader
 
 warnings.filterwarnings("ignore")
 
@@ -100,7 +100,7 @@ class Model(nn.Module):
                 outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+            optimizer.step()
             #scheduler.step()
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
