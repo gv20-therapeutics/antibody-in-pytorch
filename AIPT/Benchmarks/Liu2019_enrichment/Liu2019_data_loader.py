@@ -37,4 +37,44 @@ def encode_data(data, aa_list = AA_LS, gapped = True, seq_len = 17, gap_pos = ga
             data = data + ''.join(['-' for _ in range(seq_len - len(data))])
     return np.array([codes[aa_mapping[kk]] for kk in data])
 
+def dataset_split(df, test_size= 0.1, batch_size = 100, random_seed = 0, neg_ratio = 0.1, nd_ratio = 0.01):
+    dat = df.loc[df['enriched'] != 'not_determined']
+    x = dat['cdr3'].values
+    X_dat = np.array([encode_data(item, gapped = False, seq_len = 18) for item in x])
+    
+    x_tot = df['cdr3'].values
+    X_tot = np.array([encode_data(item, gapped = False, seq_len = 18) for item in x_tot])
 
+    # scale y_reg
+    y_reg = df['log10(R3/R2)'].values
+    y_reg_mean = np.mean(y_reg)
+    y_reg_std = np.std(y_reg)
+    y_reg_new = (y_reg - y_reg_mean) / y_reg_std
+    y_class = np.array([int(xx == 'positive') for xx in dat['enriched'].values])
+    
+    np.random.seed(random_seed)
+    mask_act = [xx == 'positive' for xx in df['enriched'].values]
+    mask_neg = [xx == 'negative' for xx in df['enriched'].values]
+    mask_neg1 = np.random.rand(len(df), ) > neg_ratio
+    mask_neg2 = np.random.rand(len(df), ) > neg_ratio
+    mask_neg3 = np.random.rand(len(df), ) > neg_ratio
+    
+    mask_ND = [xx == 'not_determined' for xx in df['enriched'].values]
+    mask_nd1 = np.random.rand(len(df), ) < nd_ratio
+    mask_nd2 = np.random.rand(len(df), ) < nd_ratio
+    mask_nd3 = np.random.rand(len(df), ) < nd_ratio
+    
+    mask1 = np.array([mask_act[i] or (mask_neg1[i] and mask_neg[i]) or (mask_ND[i] and mask_nd1[i]) for i in range(len(df))])
+    mask2 = np.array([mask_act[i] or (mask_neg2[i] and mask_neg[i]) or (mask_ND[i] and mask_nd2[i]) for i in range(len(df))])
+    mask3 = np.array([mask_act[i] or (mask_neg3[i] and mask_neg[i]) or (mask_ND[i] and mask_nd3[i]) for i in range(len(df))])
+    
+    classifier_loader = train_test_loader(X_dat, y_class, test_size=test_size, batch_size=batch_size)
+    regressor_loader1 = train_test_loader(X_tot[mask1], y_reg_new[mask1], test_size, batch_size)
+    regressor_loader2 = train_test_loader(X_tot[mask2], y_reg_new[mask2], test_size, batch_size)
+    regressor_loader3 = train_test_loader(X_tot[mask3], y_reg_new[mask3], test_size, batch_size)
+
+    return classifier_loader, regressor_loader1, regressor_loader2, regressor_loader3
+
+
+
+    

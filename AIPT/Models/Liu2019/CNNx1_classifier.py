@@ -244,15 +244,13 @@ class CNN_classifier(Model):
 
 
 #----------------------------------------------------------
-if __name__ == '__main__':
-    traindat = pd.read_csv('cdr3s.table.csv')
-    # exclude not_determined
-    dat = traindat.loc[traindat['enriched'] != 'not_determined']
-    x = dat['cdr3'].values
-    y_class = [int(xx == 'positive') for xx in dat['enriched'].values]
+def test():
+    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
 
-    para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
+    para_dict = { 
+              'num_samples': 1000,
+              'batch_size':100,
+              'seq_len':18,
               'model_name':'Seq_32x1_16',
               'optim_name':'Adam',
               'epoch':20,
@@ -263,32 +261,9 @@ if __name__ == '__main__':
               'fc_hidden_dim':16,
               'dropout_rate':0.5}
 
-    para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
-              'model_name':'Seq_64x1_16',
-              'optim_name':'Adam',
-              'epoch':20,
-              'learning_rate':0.001,
-              'step_size':5,
-              'n_filter':64,
-              'filter_size':5,
-              'fc_hidden_dim':16,
-              'dropout_rate':0.5}
-
-    para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
-              'model_name':'Seq_32x1_16_filt3',
-              'optim_name':'Adam',
-              'epoch':20,
-              'learning_rate':0.001,
-              'step_size':5,
-              'n_filter':32,
-              'filter_size':3,
-              'fc_hidden_dim':16,
-              'dropout_rate':0.5}
-
-    X_dat = np.array([encode_data(item, gapped = True) for item in x])
-    train_loader, test_loader = train_test_loader(X_dat, np.array(y_class), batch_size=para_dict['batch_size'])
+    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'], aa_list=aa_list)
+    data = loader.encode_data(data)
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
     
     model = CNN_classifier(para_dict)
     model.fit(train_loader)
@@ -297,23 +272,18 @@ if __name__ == '__main__':
     mat, acc, mcc = model.evaluate(output, labels)
 
     # demo for optimization
-    para_json = './work/Seq_32x1_16_class-0.0001/train_parameters.json'
+    para_json = './work/Seq_32x1_16_class/train_parameters.json'
     para_dict = json.load(open(para_json, 'r'))
     prev_model = CNN_classifier(para_dict)
     prev_model.net_init()
     prev_model.load_model()
     seed_seqs, labels = next(iter(train_loader))
     new_seqs = prev_model.optimization(seed_seqs, labels, 
-                                       step_size = 0.001, interval = 10, iteration = 1)
-
-
-    new_seqs_2 = prev_model.optimization_2(seed_seqs, labels, 
-                                       step_size = 0.01, interval = 80)
+                                       step_size = 0.001, interval = 10)
     # check sequence identity
     new_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
     seed_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
-
-    new_seqs_2.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
     
-    
+if __name__ == '__main__':
+    test() 
     

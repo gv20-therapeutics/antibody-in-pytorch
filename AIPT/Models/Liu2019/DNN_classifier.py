@@ -126,16 +126,8 @@ class DNN_classifier(CNN_classifier):
         return Xs
 
 #----------------------------------------------------------
-if __name__ == '__main__':
-
-    traindat = pd.read_csv('cdr3s.table.csv')
-    # exclude not_determined
-    dat = traindat.loc[traindat['enriched'] != 'not_determined']
-    x = dat['cdr3'].values
-    y_reg = dat['log10(R3/R2)'].values
-    y_class = [int(xx == 'positive') for xx in dat['enriched'].values]
-
-    X_dat = np.array([encode_data(item, gapped = True) for item in x])
+def test():
+    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
 
     para_dict = {'batch_size':100,
               'seq_len':18,
@@ -146,9 +138,15 @@ if __name__ == '__main__':
               'dropout_rate':0.5,
               'model_type': 'classification'}
 
-    train_loader, test_loader = train_test_loader(X_dat, y_class, batch_size=para_dict['batch_size'])
+    data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'], aa_list=aa_list)
+    data = loader.encode_data(data)
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
+
     model = DNN_classifier(para_dict)
     model.fit(train_loader)
     output = model.predict(test_loader)
     labels = np.vstack([i for _, i in test_loader])
     mat, acc, mcc = model.evaluate(output, labels)
+
+if __name__ == '__main__':
+    test()

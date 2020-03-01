@@ -84,8 +84,8 @@ class Model(nn.Module):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
-                                              gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
+        #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
+        #                                      gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
         for e in range(saved_epoch, self.para_dict['epoch']):
             print('Epoch %d: ' % (e + 1), end='')
             total_loss = 0
@@ -101,7 +101,7 @@ class Model(nn.Module):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                scheduler.step()
+            #scheduler.step()
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
             print('Loss=%.3f' % (total_loss))
@@ -197,3 +197,4 @@ def test():
 
 if __name__ == '__main__':
     test()
+

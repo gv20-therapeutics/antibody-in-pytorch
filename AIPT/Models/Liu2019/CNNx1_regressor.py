@@ -240,7 +240,7 @@ class CNN_regressor(Model):
                 print(name, param.data.shape)
 
 #----------------------------------------------------------
-if __name__ == '__main__':
+def test():
     traindat = pd.read_csv('cdr3s.table.csv')
     MAX_LEN = 17
     # exclude not_determined
