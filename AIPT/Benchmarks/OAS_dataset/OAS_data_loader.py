@@ -143,7 +143,7 @@ def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
 def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
-                    pad=False, batch_size=500, model_name='Wollacott2019_Bi_LSTM',
+                    pad=False, batch_size=500, model_name='Wollacott2019',
                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
     """
     Create the train and test df
@@ -196,11 +196,17 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
                                species_type=species_type, pad=pad, seq_len=seq_len)
 
     # Balanced Sampler for the loader
-    class_weigth = class_weight.compute_class_weight('balanced', np.unique(training_set.output), training_set.output)
-    sample = sampler.WeightedRandomSampler(class_weigth, batch_size)
+    class_sample_count = []
+    for a in np.unique(training_set.output):
+        class_sample_count.append((training_set.output == a).sum())
+    weights = 1 / torch.Tensor(class_sample_count)
+    new_w = np.zeros(np.shape(training_set.output))
+    for a in np.unique(training_set.output):
+        new_w[training_set.output == a] = weights[a]
+    sample = torch.utils.data.sampler.WeightedRandomSampler(new_w, batch_size)
 
     # Train and test loaders
-    if model_name == 'Wollacott2019_Bi_LSTM':
+    if model_name == 'Wollacott2019':
         train_loader = DataLoader(training_set.input, batch_size=batch_size, sampler=sample, drop_last=True, collate_fn=collate_fn)
     else:
         train_loader = DataLoader(training_set, batch_size=batch_size, sampler=sample, drop_last=True)

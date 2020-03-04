@@ -80,11 +80,11 @@ def main():
             from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_CNN
             Test_Mason2020_CNN(para_dict, train_loader, test_loader)
 
-        if args.model_name == 'Mason2020_LSTM_RNN' or args.model_name == 'All':
+        if args.model_name == 'Mason2020_LSTM' or args.model_name == 'All':
             from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM_RNN
             Test_Mason2020_LSTM_RNN(para_dict, train_loader, test_loader)
 
-        if args.model_name == 'Wollacott2019_Bi_LSTM':
+        if args.model_name == 'Wollacott2019':
             from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019_Bi_LSTM
             Test_Wollacott2019_Bi_LSTM(para_dict, train_loader, test_loader)
     else:
