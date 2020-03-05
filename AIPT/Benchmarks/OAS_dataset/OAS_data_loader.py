@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import IterableDataset, DataLoader, Dataset, sampler
 from sklearn.utils import class_weight
+import torch
 
 from ...Utils import loader
 
