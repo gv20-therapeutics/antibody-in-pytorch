@@ -5,9 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
 
-from ...Benchmarks.OAS_dataset import OAS_data_loader
-from ...Utils import loader
-from ...Utils.model import Model
+from AIPT.Utils import loader
+from AIPT.Utils.model import Model
 
 # true if gapped else false
 vocab_o = {
@@ -252,6 +251,7 @@ class LSTM_Bi(Model):
         return dict_class
 
 
+
 def test():
     para_dict = {'model_name': 'LSTM_Bi',
                  'optim_name': 'Adam',
@@ -261,7 +261,7 @@ def test():
                  'epoch': 5,
                  'batch_size': 5,
                  'learning_rate': 0.01,
-                 'gapped': True,
+                 'gapped': False,
                  'embedding_dim': 64,
                  'hidden_dim': 64,
                  'random_state': 100,
@@ -280,6 +280,8 @@ def test():
     labels = np.vstack([i for _, i in test_loader])
     model.evaluate(output, labels)
 
+
 if __name__ == '__main__':
     test()
+
 

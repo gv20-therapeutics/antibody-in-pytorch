@@ -9,17 +9,23 @@ def main():
     """.format(__version__))
 
     parser = optparse.OptionParser()
-
+    
+    parser.add_option('--work-path', type=str, default='../checkpoints')
+    parser.add_option('--index-file', type=str, default='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info2.txt')
+    parser.add_option('--seq-dir', type=str, default='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
     parser.add_option('--num-samples', type=int, default=1000)
     parser.add_option('--seq-len', type=int, default=20)
-    parser.add_option('--batch-size', type=int, default=5000)
+    parser.add_option('--batch-size', type=int, default=4096)
     parser.add_option('--dataset', type=str, default='OAS')
-    parser.add_option('--model-name', type=str, default='Wollacott2019_Bi_LSTM')
+    parser.add_option('--model-name', type=str, default='Benchmark_Wollacott2019')
     parser.add_option('--optim-name', type=str, default='Adam')
-    parser.add_option('--epoch', type=int, default=5)
-    parser.add_option('--learning-rate', type=float, default=1e-3)
+    parser.add_option('--epoch', type=int, default=50)
+    parser.add_option('--learning-rate', type=float, default=1e-1)
     parser.add_option('--step-size', type=int, default=10)
     parser.add_option('--dropout-rate', type=float, default=0.5)
+#     parser.add_option('--fixed-len', action="store_const", default=False)
+#     parser.add_option('--pad', action="store_const", default=True)
+#     parser.add_option('--gapped', action="store_const", default=True)
     parser.add_option('--random-state', type=int, default=100)  # For splitting the data
 
     parser.add_option('--n_filter', type=int, default=400)  # CNN model
@@ -31,8 +37,11 @@ def main():
 
 
     args, _ = parser.parse_args()
-
-    para_dict = {'batch_size': args.batch_size,
+    
+    # 'human','rabbit','rhesus','mouse'
+    
+    para_dict = {'work_path': args.work_path,
+                 'batch_size': args.batch_size,
                  'optim_name': args.optim_name,
                  'epoch': args.epoch,
                  'learning_rate': args.learning_rate,
@@ -44,7 +53,7 @@ def main():
                  'hidden_layer_num': args.hidden_layer_num,
                  'hidden_dim': args.hidden_dim,
                  'embedding_dim': args.embedding_dim,
-                 'species_type': ['human', 'mouse', 'rabbit', 'rhesus'],
+                 'species_type': ['human','rabbit','rhesus','mouse'],
                  'fixed_len': False,
                  'gapped': True,
                  'pad': False}
@@ -69,24 +78,38 @@ def main():
         Runs all models or specific model on OAS dataset
         """
         from .Benchmarks.OAS_dataset import OAS_data_loader
-        train_loader, test_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info2.txt',
+        train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(index_file=args.index_file,
                                                       output_field='Species', input_type='full_length',
                                                       species_type=para_dict['species_type'], gapped=para_dict['gapped'],
-                                                      pad=para_dict['pad'],
-                                                      seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
+                                                      pad=para_dict['pad'], model_name= args.model_name,
+                                                      seq_dir=args.seq_dir)
 
 
         if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':
             from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_CNN
-            Test_Mason2020_CNN(para_dict, train_loader, test_loader)
+            Test_Mason2020_CNN(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
         if args.model_name == 'Mason2020_LSTM' or args.model_name == 'All':
-            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM_RNN
-            Test_Mason2020_LSTM_RNN(para_dict, train_loader, test_loader)
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM
+            Test_Mason2020_LSTM(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
         if args.model_name == 'Wollacott2019':
-            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019_Bi_LSTM
-            Test_Wollacott2019_Bi_LSTM(para_dict, train_loader, test_loader)
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019
+            Test_Wollacott2019(para_dict, train_loader, test_loader)
+    
+    elif args.dataset == 'Benchmark':
+        
+        from .Benchmarks.benchmark import OAS_data_loader
+        train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader(
+                                index_file=args.index_file,
+                                output_field='Species', input_type='full_length',
+                                species_type=para_dict['species_type'], gapped=para_dict['gapped'],
+                                pad=para_dict['pad'], model_name=args.model_name,
+                                seq_dir=args.seq_dir)
+        
+        if args.model_name == 'Wollacott2019':
+            from .Benchmarks.OAS_dataset.comparison_OAS import Benchmark_Wollacott2019
+            Benchmark_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eval_loader)
     else:
         print('Please provide the dataset name using the --dataset parameter')
     exit(0)

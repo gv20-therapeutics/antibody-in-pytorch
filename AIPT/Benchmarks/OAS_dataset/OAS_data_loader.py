@@ -8,7 +8,7 @@ from torch.utils.data import IterableDataset, DataLoader, Dataset, sampler
 from sklearn.utils import class_weight
 import torch
 
-from ...Utils import loader
+from AIPT.Utils import loader
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
                 'Link', 'Longitudinal', 'Species', 'Subject', 'Vaccine']
