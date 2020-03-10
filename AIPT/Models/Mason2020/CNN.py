@@ -45,6 +45,7 @@ class CNN_classifier(Model):
         self.fc1 = nn.Linear(
             in_features=(self.para_dict['seq_len'] - self.para_dict['filter_size']) * self.para_dict['n_filter'],
             out_features=self.para_dict['fc_hidden_dim'])
+        self.dropout = nn.Dropout(p=self.para_dict['dropout_rate'])
         self.fc2 = nn.Linear(in_features=self.para_dict['fc_hidden_dim'], out_features=self.para_dict['num_classes'])
 
     def forward(self, Xs, _aa2id=None):
@@ -56,7 +57,7 @@ class CNN_classifier(Model):
 
         X = torch.FloatTensor(Xs)
         X = X.permute(0, 2, 1)
-        out = F.dropout(self.conv1(X), p=self.para_dict['dropout_rate'])
+        out = self.dropout(self.conv1(X))
         out = self.pool(out)
         out = out.reshape(batch_size, -1)
         out = F.relu(self.fc1(out))
@@ -68,25 +69,25 @@ class CNN_classifier(Model):
 def test():
     aa_list = 'ACDEFGHIKLMNPQRSTVWY'
 
-    para_dict = {'num_samples': 10000,
-                 'seq_len': 13,
-                 'batch_size': 500,
+    para_dict = {'num_samples': 1000,
+                 'seq_len':15,
+                 'batch_size': 50,
                  'model_name': 'CNN_Model',
                  'optim_name': 'Adam',
-                 'epoch': 50,
-                 'learning_rate': 0.01,
-                 'step_size': 5,
-                 'n_filter': 400,
-                 'filter_size': 3,
-                 'fc_hidden_dim': 50,
+                 'epoch': 20,
+                 'learning_rate': 0.001,
+                 'step_size': 10,
+                 'n_filter': 300,
+                 'filter_size': 4,
+                 'fc_hidden_dim':100,
                  'aa_len': len(aa_list),
-                 'dropout_rate': 0.5,
+                 'dropout_rate': 0.1,
                  'gapped': False,
                  'pad': False}
 
     data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'], aa_list=aa_list)
     data = loader.encode_data(data)
-    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, batch_size=para_dict['batch_size'])
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, sample=False, batch_size=para_dict['batch_size'])
 
     print('Parameters are', para_dict)
     model = CNN_classifier(para_dict)
