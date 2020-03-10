@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 import torch.optim as optim
 from sklearn.metrics import r2_score, mean_squared_error
-from AIPT.Model.Liu2019.CNNx1_regressor import CNN_regressor
+from AIPT.Models.Liu2019.CNNx1_regressor import CNN_regressor
 
 class DNN_regressor(CNN_regressor):
     def __init__(self, para_dict, *args, **kwargs):
@@ -22,7 +22,7 @@ class DNN_regressor(CNN_regressor):
             self.para_dict['fc_hidden_dim'] = 32
     
     def net_init(self):
-        self.fc1 = nn.Linear(in_features = 21 * self.para_dict['seq_len'], 
+        self.fc1 = nn.Linear(in_features = 20 * self.para_dict['seq_len'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], 
                              out_features = self.para_dict['fc_hidden_dim'])
@@ -126,11 +126,12 @@ class DNN_regressor(CNN_regressor):
 
 #----------------------------------------------------------
 def test():
-
+    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
     para_dict = {'seq_len':18,
              'batch_size':100,
               'model_name':'DNN_2Layer_reg',
               'epoch':20,
+              'num_samples':1000,
               'learning_rate':0.001,
               'fc_hidden_dim':32,
               'dropout_rate':0.5,

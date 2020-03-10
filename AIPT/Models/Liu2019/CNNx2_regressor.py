@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 import torch.optim as optim
 from sklearn.metrics import r2_score, mean_squared_error
-from AIPT.Model.Liu2019.CNNx1_regressor import CNN_regressor
+from AIPT.Models.Liu2019.CNNx1_regressor import CNN_regressor
 
 class CNNx2_regressor(CNN_regressor):
     def __init__(self, para_dict, *args, **kwargs):
@@ -35,7 +35,7 @@ class CNNx2_regressor(CNN_regressor):
             self.para_dict['pool_kernel_size'] = 2
     
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels = 21, 
+        self.conv1 = nn.Conv1d(in_channels = 20, 
                                out_channels = self.para_dict['n_filter1'],
                                kernel_size = self.para_dict['filter_size1'],
                                stride = 1, padding = 0)
@@ -119,11 +119,12 @@ class CNNx2_regressor(CNN_regressor):
 
 #----------------------------------------------------------
 def test():
-
+    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
     para_dict = {'seq_len':18,
               'batch_size':100,
-              'model_name':'Seq_32x2_16',
+              'model_name':'Seq_32x2_16_regres',
               'epoch':20,
+              'num_samples':1000,
               'learning_rate':0.001,
               'step_size':5,
               'n_filter1':32,

@@ -30,7 +30,7 @@ class CNN_regressor(Model):
             self.para_dict['GPU'] = False
     
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels = 21, 
+        self.conv1 = nn.Conv1d(in_channels = 20, 
                                out_channels = self.para_dict['n_filter'],
                                kernel_size = self.para_dict['filter_size'],
                                stride = 1, padding = 0)
@@ -240,9 +240,11 @@ class CNN_regressor(Model):
 
 #----------------------------------------------------------
 def test():
+    aa_list = 'ACDEFGHIKLMNPQRSTVWY'
     para_dict = {'batch_size':100,
-             'seq_len':MAX_LEN,
-              'model_name':'Seq_32x1_16',
+              'seq_len':20,
+              'num_samples':1000,
+              'model_name':'Seq_32x1_16_regress',
               'optim_name':'Adam',
               'epoch':20,
               'learning_rate':0.001,

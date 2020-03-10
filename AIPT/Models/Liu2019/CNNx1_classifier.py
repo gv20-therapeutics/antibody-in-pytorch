@@ -3,6 +3,8 @@ from AIPT.Utils import loader
 import numpy as np 
 import pandas as pd
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
+import json
+import os
 
 #---------------------------------------------------------------------
 import torch
@@ -34,7 +36,7 @@ class CNN_classifier(Model):
         #    torch.set_default_tensor_type('torch.FloatTensor')
     
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels = 21, 
+        self.conv1 = nn.Conv1d(in_channels = 20, 
                                out_channels = self.para_dict['n_filter'],
                                kernel_size = self.para_dict['filter_size'],
                                stride = 1, padding = 0)
@@ -271,14 +273,14 @@ def test():
     mat, acc, mcc = model.evaluate(output, labels)
 
     # demo for optimization
-    para_json = './work/Seq_32x1_16_class/train_parameters.json'
+    para_json = os.path.join(model.model_path,'train_parameters.json')
+    print(para_json)
     para_dict = json.load(open(para_json, 'r'))
     prev_model = CNN_classifier(para_dict)
     prev_model.net_init()
     prev_model.load_model()
     seed_seqs, labels = next(iter(train_loader))
-    new_seqs = prev_model.optimization(seed_seqs, labels, 
-                                       step_size = 0.001, interval = 10)
+    new_seqs = prev_model.optimization(seed_seqs, step_size = 0.001, interval = 10)
     # check sequence identity
     new_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]
     seed_seqs.permute(0,2,1).argmax(dim = 1).unsqueeze(dim=1)[0,:,:]

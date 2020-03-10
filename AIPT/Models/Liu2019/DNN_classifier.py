@@ -12,7 +12,7 @@ import pdb
 
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
-from AIPT.Model.Liu2019.CNNx1_classifier import CNN_classifier
+from AIPT.Models.Liu2019.CNNx1_classifier import CNN_classifier
 
 class DNN_classifier(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
@@ -24,7 +24,7 @@ class DNN_classifier(CNN_classifier):
             self.para_dict['fc_hidden_dim'] = 32
     
     def net_init(self):
-        self.fc1 = nn.Linear(in_features = 21 * self.para_dict['seq_len'], out_features = self.para_dict['fc_hidden_dim'])
+        self.fc1 = nn.Linear(in_features = 20 * self.para_dict['seq_len'], out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc3 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
@@ -130,6 +130,7 @@ def test():
 
     para_dict = {'batch_size':100,
               'seq_len':18,
+              'num_samples':1000,
               'model_name':'DNN_2Layer_class',
               'epoch':20,
               'learning_rate':0.001,

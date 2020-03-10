@@ -7,7 +7,7 @@ from sklearn.utils import class_weight
 AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 
 
-def synthetic_data(num_samples=1000, seq_len=10, aa_list=AA_LS):
+def synthetic_data(num_samples=1000, seq_len=10, aa_list=AA_LS,  type = 'classifier'):
     """
     :param num_samples: Number od samples to be synthesized
     :param seq_len: Length of each sequence
@@ -16,13 +16,13 @@ def synthetic_data(num_samples=1000, seq_len=10, aa_list=AA_LS):
     """
     aa_size = len(aa_list)
     data = np.zeros((num_samples, seq_len), dtype=int)
-    out = np.zeros((num_samples), dtype=int)
-    for i in range(num_samples):
-        for j in range(seq_len):
-            data[i, j] = np.random.randint(aa_size)
-    for i in range(num_samples):
-        if i < round(num_samples / 2):
-            out[i] = 1
+    if type == 'classifier':
+        out = np.zeros((num_samples), dtype=int)
+        for i in range(num_samples):
+            if i < round(num_samples / 2):
+                out[i] = 1
+    elif type == 'regressor':
+        out = np.linspace(start = 0, stop = 1, num=num_samples)
 
     return data, out
 
@@ -72,7 +72,7 @@ def train_test_loader(x, y=None, test_size=0.3, batch_size=16, sample=None, rand
     return train_loader, test_loader
 
 
-def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3, batch_size=16, type = 'classifier'):
+def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3):
     """
     Loaders for Wollacott model with collate function
     """

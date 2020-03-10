@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pdb 
-from AIPT.Model.Liu2019.CNNx1_classifier import CNN_classifier
+from AIPT.Models.Liu2019.CNNx1_classifier import CNN_classifier
 
 class CNNx2_classifier(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
@@ -31,7 +31,7 @@ class CNNx2_classifier(CNN_classifier):
             self.para_dict['pool_kernel_size'] = 2
     
     def net_init(self):
-        self.conv1 = nn.Conv1d(in_channels = 21, 
+        self.conv1 = nn.Conv1d(in_channels = 20, 
                                out_channels = self.para_dict['n_filter1'],
                                kernel_size = self.para_dict['filter_size'],
                                stride = 1, padding = 0)
