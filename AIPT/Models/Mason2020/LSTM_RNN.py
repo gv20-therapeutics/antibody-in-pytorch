@@ -55,7 +55,7 @@ class LSTM_RNN_classifier(Model):
         Xs_len = []
         Xs = np.array(Xs)
         for a in Xs:
-            m = np.where(a == 0)[0]
+            m = np.where(a == -1)[0]
             if not list(m):
                 Xs_len.append(Xs.shape[1])
             else:
