@@ -4,3 +4,4 @@ AIPT.egg-info/
 build/
 dist/
 work/
+.ipynb_checkpoints/
