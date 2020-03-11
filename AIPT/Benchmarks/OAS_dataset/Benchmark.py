@@ -90,7 +90,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     return train_loader, train_eval_loader, test_eval_loader, seq_len
 
-class Benchmark(LSTM_Bi):
+class Benchmark_Wollacott2019(LSTM_Bi):
 
     def __init__(self, para_dict, *args, **kwargs):
         super(Benchmark, self).__init__(para_dict, *args, **kwargs)
@@ -176,7 +176,7 @@ def test():
     train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, sample=False,
                                                          batch_size=para_dict['batch_size'])
     print('Parameters are', para_dict)
-    model = Benchmark(para_dict)
+    model = Benchmark_Wollacott2019(para_dict)
     print('Training...')
     model.fit(train_loader)
     print('Testing...')

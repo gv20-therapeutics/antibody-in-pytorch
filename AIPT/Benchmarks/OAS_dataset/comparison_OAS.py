@@ -66,7 +66,7 @@ def Benchmark_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eva
     para_dict['model_name'] = 'Benchmark_Wollacott2019'
     para_dict['num_classes'] = len(para_dict['species_type'])
     print('Parameters: ', para_dict)
-    model = Benchmark(para_dict)
+    model = Benchmark_Wollacott2019(para_dict)
     model.fit(train_loader)
     print('Train data evaluation')
     output = model.predict(train_eval_loader)
