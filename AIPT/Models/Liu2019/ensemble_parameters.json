@@ -8,7 +8,6 @@
     "fc_hidden_dim": 32,
     "dropout_rate": 0.3,
     "GPU": true,
-    "work_path": "/mnt/sd2/qingyang/antibody_pytorch/work",
     "step_size": 5,
     "optim_name": "Adam",
     "n_filter": 400,
