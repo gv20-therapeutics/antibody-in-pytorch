@@ -90,14 +90,14 @@ class Model(nn.Module):
             print('Epoch %d: ' % (e + 1), end='')
             total_loss = 0
             for input in data_loader:
-                outputs_train = []
+                # outputs_train = []
                 features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
                 # print(logps, labels)
                 loss = loss(logps, torch.tensor(labels).type(torch.long))
                 total_loss += loss
-                outputs_train.append(logps.detach().numpy())
+                # outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
                 loss.backward()
             optimizer.step()
@@ -122,7 +122,7 @@ class Model(nn.Module):
 
             return np.vstack(all_outputs)
 
-    def evaluate(self, outputs, labels):
+    def evaluate(self, obj, outputs, labels):
 
         y_pred = []
         for a in outputs:
@@ -135,7 +135,7 @@ class Model(nn.Module):
 
         print('Confusion matrix: ')
         print(mat)
-        print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+        print('%s Accuracy : %.3f; %s MCC : %.3f;' % (obj, acc, obj, mcc))
 
         return mat, acc, mcc
 
@@ -167,10 +167,6 @@ class Model(nn.Module):
         if os.path.exists(filepath):
             return json.load(open(filepath, 'r'))
         return None
-
-    def collate_fn(batch):
-        return batch, [x for seq in batch for x in seq]
-
 
 def test():
     para_dict = {'num_samples': 1000,

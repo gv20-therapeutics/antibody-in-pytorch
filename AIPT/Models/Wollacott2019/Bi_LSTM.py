@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, matthews_corrcoef, accuracy_score
 
-from AIPT.Utils import loader
-from AIPT.Utils.model import Model
+from ...Utils import loader
+from ...Utils.model import Model
 
 # true if gapped else false
 vocab_o = {
@@ -283,5 +283,4 @@ def test():
 
 if __name__ == '__main__':
     test()
-
 
