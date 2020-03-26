@@ -48,7 +48,7 @@ class CNN_classifier(Model):
         self.dropout = nn.Dropout(p=self.para_dict['dropout_rate'])
         self.fc2 = nn.Linear(in_features=self.para_dict['fc_hidden_dim'], out_features=self.para_dict['num_classes'])
 
-    def forward(self, Xs, _aa2id=None):
+    def hidden(self, Xs):
         batch_size = len(Xs)
         if self.para_dict['gapped'] == True and self.para_dict['pad'] == True:
             Xs = loader.encode_data(Xs, aa_list=AA_GP)
@@ -60,8 +60,14 @@ class CNN_classifier(Model):
         out = self.dropout(self.conv1(X))
         out = self.pool(out)
         out = out.reshape(batch_size, -1)
-        out = F.relu(self.fc1(out))
-        out = torch.sigmoid(self.fc2(out))
+
+        return out
+
+    def forward(self, Xs):
+
+        out = self.hidden(Xs)
+        out = torch.relu(self.fc1(out))
+        out = F.softmax(self.fc2(out))
 
         return out
 
@@ -69,13 +75,13 @@ class CNN_classifier(Model):
 def test():
     aa_list = 'ACDEFGHIKLMNPQRSTVWY'
 
-    para_dict = {'num_samples': 1000,
-                 'seq_len':15,
-                 'batch_size': 50,
+    para_dict = {'num_samples': 2000,
+                 'seq_len':50,
+                 'batch_size': 200,
                  'model_name': 'CNN_Model',
                  'optim_name': 'Adam',
-                 'epoch': 20,
-                 'learning_rate': 0.001,
+                 'epoch': 25,
+                 'learning_rate': 0.01,
                  'step_size': 10,
                  'n_filter': 300,
                  'filter_size': 4,
@@ -87,7 +93,7 @@ def test():
 
     data, out = loader.synthetic_data(num_samples=para_dict['num_samples'], seq_len=para_dict['seq_len'], aa_list=aa_list)
     data = loader.encode_data(data)
-    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, sample=False, batch_size=para_dict['batch_size'])
+    train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, sample=True, batch_size=para_dict['batch_size'])
 
     print('Parameters are', para_dict)
     model = CNN_classifier(para_dict)

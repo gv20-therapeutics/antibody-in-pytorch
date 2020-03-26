@@ -110,6 +110,79 @@ def main():
         if args.model_name == 'Wollacott2019':
             from .Benchmarks.OAS_dataset.comparison_OAS import Benchmark_Wollacott2019
             Benchmark_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eval_loader)
+
+    elif args.dataset == 'Naive_Memory_cells':
+
+        if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':
+            
+            from .Models.Mason2020 import CNN
+            from .Benchmarks.OAS_dataset import OAS_data_loader
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader_for_memory_naive_cells(
+                                index_file=args.index_file,
+                                output_field='BType', input_type='full_length',
+                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                                pad=para_dict['pad'], model_name=args.model_name,
+                                seq_dir=args.seq_dir)
+            para_dict['model_name'] = 'CNN_Model'
+            para_dict['num_classes'] = len(para_dict['cells_type'])
+            print('Parameters: ', para_dict)
+            model = CNN.CNN_classifier(para_dict)
+            model.fit(train_loader)
+#             print('Training_evaluation')
+#             output = model.predict(train_eval_loader)
+#             labels = np.vstack([i for _, i in train_eval_loader])
+#             model.evaluate('Train', output, labels)
+            print('Test data evaluation')
+            output = model.predict(test_eval_loader)
+            labels = np.vstack([i for _, i in test_eval_loader])
+            model.evaluate('Test', output, labels)
+            
+        if args.model_name == 'Mason2020_LSTM' or args.model_name == 'All':
+            
+            from .Models.Mason2020 import LSTM_RNN
+            from .Benchmarks.OAS_dataset import OAS_data_loader
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader_for_memory_naive_cells(
+                                index_file=args.index_file,
+                                output_field='BType', input_type='full_length',
+                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                                pad=para_dict['pad'], model_name=args.model_name,
+                                seq_dir=args.seq_dir)
+            para_dict['model_name'] = 'LSTM_RNN_classifier'
+            para_dict['num_classes'] = len(para_dict['cells_type'])
+            print('Parameters: ', para_dict)
+            model = LSTM_RNN.LSTM_RNN_classifier(para_dict)
+            model.fit(train_loader)
+#             print('Training_evaluation')
+#             output = model.predict(train_eval_loader)
+#             labels = np.vstack([i for _, i in train_eval_loader])
+#             model.evaluate('Train', output, labels)
+            print('Test data evaluation')
+            output = model.predict(test_eval_loader)
+            labels = np.vstack([i for _, i in test_eval_loader])
+            model.evaluate('Test', output, labels)
+            
+        if args.model_name == 'Wollacott2019':
+            from .Benchmarks.benchmark import OAS_data_loader_for_memory_naive_cells
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader_for_memory_naive_cells(
+                                index_file=args.index_file,
+                                output_field='BType', input_type='full_length',
+                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                                pad=para_dict['pad'], model_name=args.model_name,
+                                seq_dir=args.seq_dir)
+            from .Benchmarks.benchmark import Benchmark
+            para_dict['model_name'] = 'Benchmark_Wollacott2019'
+            para_dict['num_classes'] = len(para_dict['cells_type'])
+            print('Parameters: ', para_dict)
+            model = Benchmark(para_dict)
+            model.fit(train_loader)
+#             print('Train data evaluation')
+#             output = model.predict(train_eval_loader)
+#             labels = np.vstack([i for _, i in train_eval_loader])
+#             model.evaluate('Train', output, labels)
+            print('Test data evaluation')
+            output = model.predict(test_eval_loader)
+            labels = np.vstack([i for _, i in test_eval_loader])
+            model.evaluate('Test', output, labels)
     else:
         print('Please provide the dataset name using the --dataset parameter')
     exit(0)

@@ -21,7 +21,7 @@ def collate_fn(batch):
     return [data, target]
 
 def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
-                    pad=True, batch_size=500, model_name='All',
+                    pad=True, batch_size=500, model_name='All', column_name='Species',
                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
     """
     Create the train and test df
@@ -30,8 +30,8 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num > 1]
-    list_df = index_df[index_df.Species.isin(species_type)]
-    list_df.sort_values(by=['Species'])
+    list_df = index_df[index_df[column_name].isin(species_type)]
+    list_df.sort_values(by=[column_name])
     list_df = list_df[::-1]
     list_df = list_df[:50]
 
@@ -48,7 +48,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     for a in ls_ls:
         temp_df = list_df.copy()
-        df = temp_df[temp_df.Species.isin(a)]
+        df = temp_df[temp_df[column_name].isin(a)]
         df_copy = df.copy()
         temp_train = df_copy.sample(frac=0.7)
         train_split_df = train_split_df.append(temp_train, ignore_index=True)
@@ -90,7 +90,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     return train_loader, train_eval_loader, test_eval_loader, seq_len
 
-class Benchmark_Wollacott2019(LSTM_Bi):
+class Benchmark(LSTM_Bi):
 
     def __init__(self, para_dict, *args, **kwargs):
         super(Benchmark, self).__init__(para_dict, *args, **kwargs)
@@ -100,10 +100,10 @@ class Benchmark_Wollacott2019(LSTM_Bi):
 
         if self.fixed_len:
             self.fc3 = nn.Linear(self.para_dict['batch_size']*self.para_dict['seq_len'], self.para_dict['batch_size'])  # self.para_dict['num_classes']
-            self.fc4 = nn.Linear(self.para_dict['hidden_dim'], 4)
+            self.fc4 = nn.Linear(self.para_dict['hidden_dim'], self.para_dict['num_classes'])
         else:
             self.fc3 = nn.Linear(self.para_dict['hidden_dim']*3, 3)
-            self.fc4 = nn.Linear(3, 4)
+            self.fc4 = nn.Linear(3, self.para_dict['num_classes'])
 
     def forward(self, Xs):
 
@@ -157,7 +157,7 @@ class Benchmark_Wollacott2019(LSTM_Bi):
             return np.vstack(all_outputs)
 
 def test():
-    para_dict = {'model_name': 'LSTM_Bi',
+    para_dict = {'model_name': 'Benchmark_Wollacott2019',
                  'optim_name': 'Adam',
                  'num_samples': 10000,
                  'seq_len': 50,
@@ -176,7 +176,7 @@ def test():
     train_loader, test_loader = loader.train_test_loader(data, out, test_size=0.3, sample=False,
                                                          batch_size=para_dict['batch_size'])
     print('Parameters are', para_dict)
-    model = Benchmark_Wollacott2019(para_dict)
+    model = Benchmark(para_dict)
     print('Training...')
     model.fit(train_loader)
     print('Testing...')

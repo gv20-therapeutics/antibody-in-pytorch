@@ -2,13 +2,10 @@ from itertools import islice, chain
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import IterableDataset, DataLoader, Dataset, sampler
-from sklearn.utils import class_weight
 import torch
-
-from AIPT.Utils import loader
+from sklearn.utils import class_weight
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
                 'Link', 'Longitudinal', 'Species', 'Subject', 'Vaccine']
@@ -21,7 +18,7 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=np.inf):
+def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None):
 
     """
     Convert the sequence into a matrix of index representing the amino acid
@@ -33,15 +30,15 @@ def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=np.i
     if gapped == False:
         aa_list = list(AA_LS)
     for i, seq in enumerate(data):
-        if len(seq) <= max_len_local:
-            seq_i = np.zeros(len(seq), dtype=np.int)
-            for j, s in enumerate(seq):
-                seq_i[j] = aa_list.index(s)
-            if pad == True:
-                arr_create = (max_len_local - len(seq))
-                temp = np.full(arr_create, -1, dtype=np.int)
-                seq_i = np.concatenate([seq_i,temp])
-            X.append(seq_i)
+        # if len(seq) <= max_len_local:
+        seq_i = np.zeros(len(seq), dtype=np.int)
+        for j, s in enumerate(seq):
+            seq_i[j] = aa_list.index(s)
+        if pad == True:
+            arr_create = (max_len_local - len(seq))
+            temp = np.full(arr_create, -1, dtype=np.int)
+            seq_i = np.concatenate([seq_i,temp])
+        X.append(seq_i)
     return X
 
 
@@ -129,7 +126,7 @@ class OAS_preload(Dataset):
             self.input.extend(train_x)
             self.output.extend(train_y)
 
-        self.input = encode_index(data=self.input, pad=pad, gapped=gapped, max_len_local = self.seq_len)
+        self.input = encode_index(data=self.input, pad=pad, gapped=gapped, max_len_local=self.seq_len)
 
     def __len__(self):
         return len(self.input)
@@ -138,7 +135,7 @@ class OAS_preload(Dataset):
         X = self.input[idx]
         y = self.output[idx]
 
-        return X, y
+        return X,y
 
 def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
@@ -150,10 +147,11 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     Create the train and test df
     return: Train and test loader
     """
+
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num > 1]
-    list_df = index_df[index_df.Species.isin(species_type)]
-    list_df.sort_values(by=['Species'])
+    list_df = index_df[index_df[output_field].isin(species_type)]
+    list_df.sort_values(by=[output_field])
     list_df = list_df[::-1]
     list_df = list_df[:50]
 
@@ -170,15 +168,15 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     for a in ls_ls:
         temp_df = list_df.copy()
-        df = temp_df[temp_df.Species.isin(a)]
+        df = temp_df[temp_df[output_field].isin(a)]
         df_copy = df.copy()
         temp_train = df_copy.sample(frac=0.7)
         train_split_df = train_split_df.append(temp_train, ignore_index=True)
         temp_test = df_copy.drop(temp_train.index)
         test_split_df = test_split_df.append(temp_test, ignore_index=True)
 
-    print('Training data',train_split_df)
-    print('Testing data',test_split_df)
+    print('Training data', train_split_df)
+    print('Testing data', test_split_df)
     # Datasets
     if output_field in valid_fields:
         labels_train = dict(zip(train_split_df['file_name'].values, train_split_df[output_field].values))
@@ -187,14 +185,15 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
         print('invalid output type!')
         return
 
-    partition = {'train': train_split_df['file_name'].values, 'test': test_split_df['file_name'].values}  # IDs, to be done!
+    partition = {'train': train_split_df['file_name'].values,
+                 'test': test_split_df['file_name'].values}  # IDs, to be done!
 
     # generators
     # training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
     training_set = OAS_preload(partition['train'], labels_train, input_type, gapped, seq_dir=seq_dir,
                                species_type=species_type, pad=pad, seq_len=seq_len)
     testing_set = OAS_preload(partition['test'], labels_test, input_type, gapped, seq_dir=seq_dir,
-                               species_type=species_type, pad=pad, seq_len=seq_len)
+                              species_type=species_type, pad=pad, seq_len=seq_len)
 
     # Balanced Sampler for the loader
     class_sample_count = []
@@ -204,13 +203,16 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     new_w = np.zeros(np.shape(training_set.output))
     for a in np.unique(training_set.output):
         new_w[training_set.output == a] = weights[a]
-    sample = torch.utils.data.sampler.WeightedRandomSampler(new_w, batch_size)
+    sample = torch.utils.data.sampler.WeightedRandomSampler(new_w, 50000)
 
     # Train and test loaders
     if model_name == 'Wollacott2019':
-        train_loader = DataLoader(training_set.input, batch_size=batch_size, sampler=sample, drop_last=True, collate_fn=collate_fn)
+        #         train_loader = DataLoader(training_set.input, batch_size=batch_size, sampler=sample, drop_last=True, collate_fn=collate_fn)
+        train_loader = DataLoader(training_set.input, batch_size=batch_size, sampler=sample, drop_last=True,
+                                  collate_fn=collate_fn)
     else:
         train_loader = DataLoader(training_set, batch_size=batch_size, sampler=sample, drop_last=True)
-    test_loader = DataLoader(testing_set)
+    train_eval_loader = DataLoader(training_set)
+    test_eval_loader = DataLoader(testing_set)
 
-    return train_loader, test_loader, seq_len
+    return train_loader, train_eval_loader, test_eval_loader, seq_len

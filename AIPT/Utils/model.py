@@ -8,10 +8,24 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 
-from AIPT.Utils import loader
+from . import loader
 
 warnings.filterwarnings("ignore")
 
+class CrossEntropyLoss():
+    def __init__(self, *args, **kwargs):
+        super(CrossEntropyLoss, self).__init__(*args, **kwargs)
+
+    def __call__(self, outputs, targets):
+
+        len_samples = targets.shape[0]
+        batch_size = outputs.shape[0]
+        softmax = nn.LogSoftmax()
+        outputs = softmax(outputs)
+        outputs = outputs[range(batch_size), torch.tensor(targets).type(torch.long)]
+        loss = - torch.sum(outputs) / len_samples
+
+        return loss
 
 class Model(nn.Module):
 
@@ -39,7 +53,7 @@ class Model(nn.Module):
 
         self.work_path = para_dict['work_path']
         self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
-            self.para_dict['batch_size']) + '_' + str(self.para_dict['epoch']))
+            self.para_dict['batch_size']))
         self.save_path = os.path.join(self.model_path, 'model')
 
         if not os.path.exists(self.work_path):
@@ -64,7 +78,7 @@ class Model(nn.Module):
         return x
 
     def objective(self):
-        return nn.CrossEntropyLoss()
+        return CrossEntropyLoss()
 
     def optimizers(self):
 
@@ -84,24 +98,24 @@ class Model(nn.Module):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
-                                              gamma = 0.5)
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
+        #                                       gamma = 0.5)
         for e in range(saved_epoch, self.para_dict['epoch']):
             print('Epoch %d: ' % (e + 1), end='')
             total_loss = 0
             for input in data_loader:
                 outputs_train = []
                 features, labels = input
+                # print(labels)
                 logps = self.forward(features)
                 loss = self.objective()
-                # print(logps, labels)
-                loss = loss(logps, torch.tensor(labels).type(torch.long))
+                loss = loss(logps, labels) # torch.tensor(labels).type(torch.long)
                 total_loss += loss
-                outputs_train.append(logps.detach().numpy())
+                # outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
                 loss.backward()
-            optimizer.step()
-            scheduler.step()
+                optimizer.step()
+            # scheduler.step()
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
             print('Loss=%.3f' % (total_loss))
@@ -197,4 +211,3 @@ def test():
 
 if __name__ == '__main__':
     test()
-
