@@ -76,12 +76,20 @@ class OAS_Dataset(IterableDataset):
             if self.input_type in input_type_dict:
                 X = input_df[input_type_dict[self.input_type]].values
             elif self.input_type == 'CDR3_full':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
                 X = [input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
+                # X = [input_df['CDR3-IMGT-111-112'].iloc[nn] for nn in range(len(input_df))]
             elif self.input_type == 'full_length':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
                 X = [''.join([input_df[item].iloc[kk] for item in full_seq_order]) for kk in range(len(input_df))]
                 X = [X[nn][:112] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      X[nn][112:] for nn in range(len(input_df))]
+            elif self.input_type == 'CDR123':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
+                X = [input_df['CDR1-IMGT'].iloc[nn] + input_df['CDR2-IMGT'].iloc[nn] + \
+                     input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
+                     input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
             else:
                 print('invalid seq type!')
                 return
