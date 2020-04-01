@@ -135,6 +135,80 @@ def main():
             from .Benchmarks.OAS_dataset.comparison_OAS import Benchmark_Wollacott2019
             Benchmark_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
+    elif args.dataset == 'Multitask':
+
+        from AIPT.Benchmarks.OAS_dataset import Multitask_learning as ML
+        from AIPT.Utils.model import Model
+
+        if args.model_name == 'CNN':
+
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = ML.OAS_data_loader(
+                index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
+                output_field=['Species', 'BType'],  input_type='CDR3',
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
+                pad=para_dict['pad'], model_name=args.model_name,
+                seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
+
+            para_dict['model_name'] = 'Multitask_CNN'
+            para_dict['num_classes'] = [len(para_dict['Multitask'][i]) for i in range(len(para_dict['Multitask']))]
+            print('Parameters: ', para_dict)
+            model = ML.Multitask_CNN(para_dict)
+            model.fit(train_loader)
+            print('Training_evaluation')
+            output = Model.predict(model, train_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(output, labels)
+            print('Test data evaluation')
+            outputs = Model.predict(model, test_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(outputs, labels)
+
+        elif args.model_name == 'LSTM_RNN':
+
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = ML.OAS_data_loader(
+                index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
+                output_field=['Species', 'BType'],  input_type='CDR3',
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
+                pad=para_dict['pad'], model_name=args.model_name,
+                seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
+
+            para_dict['model_name'] = 'Multitask_LSTM'
+            para_dict['num_classes'] = [len(para_dict['Multitask'][i]) for i in range(len(para_dict['Multitask']))]
+            print('Parameters: ', para_dict)
+            model = ML.Multitask_LSTM_RNN(para_dict)
+            model.fit(train_loader)
+            print('Training_evaluation')
+            output = Model.predict(model, train_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(output, labels)
+            print('Test data evaluation')
+            outputs = Model.predict(model, test_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(outputs, labels)
+
+        elif args.model_name == 'Bi_LSTM':
+
+            train_loader, train_eval_loader, test_eval_loader = ML.OAS_data_loader(
+                index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
+                output_field=['Species', 'BType'],  input_type='CDR3',
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
+                pad=para_dict['pad'], model_name=args.model_name,
+                seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
+
+            para_dict['model_name'] = 'Multitask_Bi_LSTM'
+            para_dict['num_classes'] = [len(para_dict['Multitask'][i]) for i in range(len(para_dict['Multitask']))]
+            print('Parameters: ', para_dict)
+            model = ML.Multitask_Bi_LSTM(para_dict)
+            model.fit(train_loader)
+            print('Training_evaluation')
+            output = Model.predict(model, train_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(output, labels)
+            print('Test data evaluation')
+            outputs = Model.predict(model, test_eval_loader)
+            labels = [i for _, i in test_eval_loader]
+            model.evaluate(outputs, labels)
+
     elif args.dataset == 'Naive_Memory_cells':
 
         if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':

@@ -33,7 +33,7 @@ def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=np.i
     if gapped == False:
         aa_list = list(AA_LS)
     for i, seq in enumerate(data):
-        if len(seq) <= max_len_local:
+        if max_len_local is None or len(seq) <= max_len_local:
             seq_i = np.zeros(len(seq), dtype=np.int)
             for j, s in enumerate(seq):
                 seq_i[j] = aa_list.index(s)

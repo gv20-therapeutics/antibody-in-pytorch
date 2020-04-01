@@ -111,31 +111,34 @@ class Model(nn.Module):
         self.eval()
         test_loss = 0
         all_outputs = []
-        labels_test = []
         with torch.no_grad():
             for data in data_loader:
-                # print(data)
                 inputs, _ = data
                 outputs = self.forward(inputs)
-                all_outputs.append(outputs.detach().numpy())
-                # labels_test.append(np.array(l))
+                temp = []
+                for i in range(len(outputs)):
+                    temp.extend(outputs[i].detach().numpy())
+                all_outputs.append(temp)
 
             return np.vstack(all_outputs)
 
-    def evaluate(self, obj, outputs, labels):
+    def evaluate(self, outputs, labels):
+        outputs = np.array(outputs).T
+        labels = np.array(labels).T
+        num_tasks = labels.shape[0]
+        for i in range(num_tasks):
+            y_pred = []
+            for a in outputs[i]:
+                y_pred.append(np.argmax(a))
+            y_true = np.array(labels[i]).flatten()
+            y_pred = np.array(y_pred)
+            mat = confusion_matrix(y_true, y_pred)
+            acc = accuracy_score(y_true, y_pred)
+            mcc = matthews_corrcoef(y_true, y_pred)
 
-        y_pred = []
-        for a in outputs:
-            y_pred.append(np.argmax(a))
-        y_true = np.array(labels).flatten()
-        y_pred = np.array(y_pred)
-        mat = confusion_matrix(y_true, y_pred)
-        acc = accuracy_score(y_true, y_pred)
-        mcc = matthews_corrcoef(y_true, y_pred)
-
-        print('Confusion matrix: ')
-        print(mat)
-        print('%s Accuracy : %.3f; %s MCC : %.3f;' % (obj, acc, obj, mcc))
+            print('Confusion matrix: ')
+            print(mat)
+            print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
 
         return mat, acc, mcc
 

@@ -4,6 +4,7 @@ from AIPT.Models.Mason2020 import CNN
 from AIPT.Models.Mason2020 import LSTM_RNN
 from AIPT.Models.Wollacott2019 import Bi_LSTM
 from AIPT.Benchmarks.Benchmark import Benchmark
+from AIPT.Utils.model import Model
 
 def Test_Mason2020_CNN(para_dict, train_loader, train_eval_loader, test_eval_loader):
     """
@@ -68,14 +69,14 @@ def Benchmark_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eva
     print('Parameters: ', para_dict)
     model = Benchmark_Wollacott2019(para_dict)
     model.fit(train_loader)
-    print('Train data evaluation')
-    output = model.predict(train_eval_loader)
+    pprint('Train data evaluation')
+    output = Model.predict(train_eval_loader)
     labels = np.vstack([i for _, i in train_eval_loader])
-    model.evaluate(output, labels)
+    model.evaluate('Train', output, labels)
     print('Test data evaluation')
-    output = model.predict(test_eval_loader)
+    output = Model.predict(test_eval_loader)
     labels = np.vstack([i for _, i in test_eval_loader])
-    model.evaluate(output, labels)
+    model.evaluate('Test', output, labels)
 
 
 

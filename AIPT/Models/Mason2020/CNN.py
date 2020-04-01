@@ -46,7 +46,8 @@ class CNN_classifier(Model):
             in_features=(self.para_dict['seq_len'] - self.para_dict['filter_size']) * self.para_dict['n_filter'],
             out_features=self.para_dict['fc_hidden_dim'])
         self.dropout = nn.Dropout(p=self.para_dict['dropout_rate'])
-        self.fc2 = nn.Linear(in_features=self.para_dict['fc_hidden_dim'], out_features=self.para_dict['num_classes'])
+        if len(self.para_dict['num_classes']) == 1:
+            self.fc2 = nn.Linear(in_features=self.para_dict['fc_hidden_dim'], out_features=self.para_dict['num_classes'])
 
     def hidden(self, Xs):
         batch_size = len(Xs)
