@@ -72,30 +72,6 @@ def main():
             from .Models.Wollacott2019.Bi_LSTM import test
             test()
 
-    elif args.model_name == 'Multitask':
-
-        from AIPT.Models.Wollacott2019 import Multitask_learning as ML
-        train_loader, train_eval_loader, test_eval_loader = ML.OAS_data_loader(
-            index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
-            output_field_1='Species', output_field_2='BType', input_type='full_length',
-            species_type_1=para_dict['species_type'], species_type_2=para_dict['cells_type'], gapped=para_dict['gapped'],
-            pad=para_dict['pad'], model_name=args.model_name,
-            seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
-        para_dict['model_name'] = 'Multitask'
-        para_dict['num_classes_1'] = len(para_dict['species_type'])
-        para_dict['num_classes_2'] = len(para_dict['cells_type'])
-        print('Parameters: ', para_dict)
-        model = ML.Multitask(para_dict)
-        model.fit(train_loader)
-        # print('Training_evaluation')
-        # output = model.predict(train_eval_loader)
-        # labels = np.vstack([i for _, i in train_eval_loader])
-        # model.evaluate(output, labels)
-        print('Test data evaluation')
-        outputs = model.predict(test_eval_loader)
-        labels = [i for _, i in test_eval_loader]
-        model.evaluate(outputs, labels)
-
     elif args.dataset == 'OAS':
         """
         Loads the OAS dataset and creates the train & test loader
