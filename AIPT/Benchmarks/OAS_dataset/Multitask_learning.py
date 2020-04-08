@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from torch.utils.data import IterableDataset, DataLoader, Dataset
+from sklearn.metrics import confusion_matrix, accuracy_score, matthews_corrcoef
 from itertools import islice, chain
 from AIPT.Benchmarks.OAS_dataset.OAS_data_loader import OAS_Dataset, OAS_preload, encode_index
 from AIPT.Models.Wollacott2019.Bi_LSTM import LSTM_Bi
@@ -53,12 +53,20 @@ class OAS_Dataset(IterableDataset):
             if self.input_type in input_type_dict:
                 X = input_df[input_type_dict[self.input_type]].values
             elif self.input_type == 'CDR3_full':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
                 X = [input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
+                # X = [input_df['CDR3-IMGT-111-112'].iloc[nn] for nn in range(len(input_df))]
             elif self.input_type == 'full_length':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
                 X = [''.join([input_df[item].iloc[kk] for item in full_seq_order]) for kk in range(len(input_df))]
                 X = [X[nn][:112] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      X[nn][112:] for nn in range(len(input_df))]
+            elif self.input_type == 'CDR123':
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
+                X = [input_df['CDR1-IMGT'].iloc[nn] + input_df['CDR2-IMGT'].iloc[nn] + \
+                     input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
+                     input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
             else:
                 print('invalid seq type!')
                 return
@@ -110,14 +118,10 @@ class OAS_preload(Dataset):
             train_x, train_y = z
             temp_y = []
             for i, m in enumerate(train_y):
-                le = LabelEncoder()
-                le.fit([[a] for a in self.species_type[i]])
-                # m = ['NaN' if s not in le.classes_ else s for s in m]
-                # le_classes = le.classes_.tolist()
-                # le_classes.append('NaN')
-                # le.classes_ = le_classes
-                m = le.transform(m)
-                temp_y.append(m)
+                classes = np.array(species_type[i][1])
+                table = {val: i for i, val in enumerate(classes)}
+                encoded = np.array([table[v] if v in species_type[i][1] else torch.tensor(float('nan')) for v in m])
+                temp_y.append(encoded)
             self.input.extend(train_x)
             self.output.extend(np.array(temp_y).T)
         self.input = encode_index(data=self.input, pad=pad, gapped=gapped, max_len_local=self.seq_len)
@@ -147,13 +151,16 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num > 1]
-    list_df = pd.DataFrame()
+    # list_df = pd.DataFrame()
     # for m in range(len(output_field)):
-    #     list_df = list_df.append(index_df[index_df[output_field[m]].isin(species_type[m])])
-    list_df = index_df[index_df[output_field[0]].isin(species_type[0]) & index_df[output_field[1]].isin(species_type[1])]
+    #     list_df = list_df.append(index_df[index_df[output_field[m]].isin(species_type[m][1])])
     # list_df = list_df.drop_duplicates()
-    list_df = list_df.sample(frac=1).reset_index(drop=True)
-    list_df = list_df[:5]
+    # list_df = list_df.sample(frac=1).reset_index(drop=True)
+    list_df = index_df[index_df[output_field[0]].isin(species_type[0][1]) & index_df[output_field[1]].isin(species_type[1][1])]
+    list_df.sort_values(by=output_field[0])
+    list_df = list_df[::-1]
+    list_df = list_df[:100]
+    # print(list_df)
 
     # Get the maximum length of a sequence
     dataset = OAS_Dataset(list_df['file_name'].values, output_field=output_field, labels=None, input_type=input_type, gapped=gapped,
@@ -214,24 +221,26 @@ class CrossEntropyLoss():
     def __init__(self, *args, **kwargs):
         super(CrossEntropyLoss, self).__init__(*args, **kwargs)
 
-    def __call__(self, outputs, targets):
+    def __call__(self, para_dict, outputs, targets):
 
         num_tasks = len(targets[0])
-        labels = np.array(targets).T
-        for i in range(num_tasks):
+        labels = torch.tensor(targets).T
 
-            target = torch.tensor(labels[i]).type(torch.long)
-            len_samples = target.shape[0]
-            batch_size = outputs[i].shape[0]
-            softmax = nn.LogSoftmax()
-            output = softmax(outputs[i])
-            output = output[range(batch_size), target]
-            l = - torch.sum(output) / len_samples
+        for i in range(num_tasks):
+            # target = torch.tensor(labels[i]).type(torch.long)
+            target = labels[i]
+            mask = ~torch.isnan(target)
+            output_masked = outputs[:,:len(para_dict['Multitask'][i][1])][mask]
+            target_masked = target[mask]
+            loss_fn = nn.CrossEntropyLoss()
+            l = loss_fn(output_masked, torch.tensor(target_masked).type(torch.long))
             if i==0:
-               loss = l
+                if not torch.isnan(l):
+                    loss = l
             else:
-                loss += l
-        return loss/num_tasks
+                if not torch.isnan(l):
+                    loss += l
+        return loss
 
 class Multitask_Bi_LSTM(LSTM_Bi):
     def __init__(self, para_dict, *args, **kwargs):
@@ -266,15 +275,44 @@ class Multitask_Bi_LSTM(LSTM_Bi):
         out = np.array(out)
         out = out.reshape(out.shape[0], self.para_dict['hidden_dim'] * 3)
         out = self.fc3(torch.tensor(out))
-        scores = []
         for i in range(len(self.para_dict['Multitask'])):
             s = self.tasks[i](out)
             score = torch.sigmoid(s)
-            scores.append(score)
+            if i == 0:
+                scores = score
+            else:
+                scores = torch.cat((scores, score), dim=1)
         return scores
 
     def objective(self):
         return CrossEntropyLoss()
+
+    def evaluate(self, outputs, labels, para_dict):
+
+        num_tasks = len(para_dict['num_classes'])
+        labels = torch.tensor(labels).T
+        outputs = torch.tensor(np.vstack(outputs))
+        for i in range(num_tasks):
+            mask = ~torch.isnan(labels[i])
+            label_masked = labels[i][mask]
+            if len(label_masked) is not 0:
+                y_pred = outputs[:, :para_dict['num_classes'][i]]
+                temp = []
+                for a in y_pred:
+                    temp.append(np.argmax(a))
+                temp = np.array(temp)
+                y_pred = temp.reshape(1, temp.shape[0])[mask]
+                y_true = np.array(labels[i]).flatten()
+                y_pred = np.array(y_pred)
+                mat = confusion_matrix(y_true, y_pred)
+                acc = accuracy_score(y_true, y_pred)
+                mcc = matthews_corrcoef(y_true, y_pred)
+
+                print('Confusion matrix: ')
+                print(mat)
+                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+            else:
+                print('No labels in the output class')
 
 class Multitask_CNN(CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
@@ -291,15 +329,44 @@ class Multitask_CNN(CNN_classifier):
 
         out = self.hidden(Xs)
         out = torch.relu(self.fc1(out))
-        scores = []
         for i in range(len(self.para_dict['Multitask'])):
             s = self.tasks[i](out)
             score = F.softmax(s)
-            scores.append(score)
+            if i == 0:
+                scores = score
+            else:
+                scores = torch.cat((scores, score), dim=1)
         return scores
 
     def objective(self):
         return CrossEntropyLoss()
+
+    def evaluate(self, outputs, labels, para_dict):
+
+        num_tasks = len(para_dict['num_classes'])
+        labels = torch.tensor(labels).T
+        outputs = torch.tensor(np.vstack(outputs))
+        for i in range(num_tasks):
+            mask = ~torch.isnan(labels[i])
+            label_masked = labels[i][mask]
+            if len(label_masked) is not 0:
+                y_pred = outputs[:, :para_dict['num_classes'][i]]
+                temp = []
+                for a in y_pred:
+                    temp.append(np.argmax(a))
+                temp = np.array(temp)
+                y_pred = temp.reshape(1, temp.shape[0])[mask]
+                y_true = np.array(labels[i]).flatten()
+                y_pred = np.array(y_pred)
+                mat = confusion_matrix(y_true, y_pred)
+                acc = accuracy_score(y_true, y_pred)
+                mcc = matthews_corrcoef(y_true, y_pred)
+
+                print('Confusion matrix: ')
+                print(mat)
+                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+            else:
+                print('No labels in the output class')
 
 class Multitask_LSTM_RNN(LSTM_RNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
@@ -315,12 +382,44 @@ class Multitask_LSTM_RNN(LSTM_RNN_classifier):
     def forward(self, Xs):
 
         out = self.hidden(Xs)
-        scores = []
+        total_classes = 0
+        for m in self.para_dict['Multitask']:
+            total_classes += len(m[1])
         for i in range(len(self.para_dict['Multitask'])):
             s = self.tasks[i](out)
             score = torch.sigmoid(s)
-            scores.append(score)
+            if i == 0:
+                scores = score
+            else:
+                scores = torch.cat((scores, score), dim=1)
         return scores
 
     def objective(self):
         return CrossEntropyLoss()
+
+    def evaluate(self, outputs, labels, para_dict):
+
+        num_tasks = len(para_dict['num_classes'])
+        labels = torch.tensor(labels).T
+        outputs = torch.tensor(np.vstack(outputs))
+        for i in range(num_tasks):
+            mask = ~torch.isnan(labels[i])
+            label_masked = labels[i][mask]
+            if len(label_masked) is not 0:
+                y_pred = outputs[:, :para_dict['num_classes'][i]]
+                temp = []
+                for a in y_pred:
+                    temp.append(np.argmax(a))
+                temp = np.array(temp)
+                y_pred = temp.reshape(1, temp.shape[0])[mask]
+                y_true = np.array(labels[i]).flatten()
+                y_pred = np.array(y_pred)
+                mat = confusion_matrix(y_true, y_pred)
+                acc = accuracy_score(y_true, y_pred)
+                mcc = matthews_corrcoef(y_true, y_pred)
+
+                print('Confusion matrix: ')
+                print(mat)
+                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+            else:
+                print('No labels in the output class')

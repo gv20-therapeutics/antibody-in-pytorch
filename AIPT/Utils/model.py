@@ -8,10 +8,20 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import confusion_matrix, matthews_corrcoef, accuracy_score
 
-from AIPT.Utils import loader
+from . import loader
 
 warnings.filterwarnings("ignore")
 
+class CrossEntropyLoss():
+    def __init__(self, *args, **kwargs):
+        super(CrossEntropyLoss, self).__init__(*args, **kwargs)
+
+    def __call__(self, para_dict, outputs, targets):
+
+        l = nn.CrossEntropyLoss()
+        loss = l(outputs, torch.tensor(targets).type(torch.long))
+
+        return loss
 
 class Model(nn.Module):
 
@@ -39,7 +49,7 @@ class Model(nn.Module):
 
         self.work_path = para_dict['work_path']
         self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
-            self.para_dict['batch_size']) + '_' + str(self.para_dict['epoch']))
+            self.para_dict['batch_size']))
         self.save_path = os.path.join(self.model_path, 'model')
 
         if not os.path.exists(self.work_path):
@@ -58,13 +68,10 @@ class Model(nn.Module):
     def forward(self, x):
 
         x = x.view(x.shape[0], 20 * self.para_dict['seq_len'])
-        x = self.fc(x)
-        x = torch.sigmoid(x)
-
         return x
 
     def objective(self):
-        return nn.CrossEntropyLoss()
+        return CrossEntropyLoss()
 
     def optimizers(self):
 
@@ -84,24 +91,22 @@ class Model(nn.Module):
 
         self.train()
         optimizer = self.optimizers()
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
-                                              gamma = 0.5)
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'],
+        #                                       gamma = 0.5)
         for e in range(saved_epoch, self.para_dict['epoch']):
             print('Epoch %d: ' % (e + 1), end='')
             total_loss = 0
             for input in data_loader:
-                # outputs_train = []
                 features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
-                # print(logps, labels)
-                loss = loss(logps, torch.tensor(labels).type(torch.long))
+                loss = loss(self.para_dict, logps, labels) # torch.tensor(labels).type(torch.long)
                 total_loss += loss
                 # outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
                 loss.backward()
-            optimizer.step()
-            scheduler.step()
+                optimizer.step()
+            # scheduler.step()
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
             print('Loss=%.3f' % (total_loss))
@@ -111,34 +116,31 @@ class Model(nn.Module):
         self.eval()
         test_loss = 0
         all_outputs = []
+        labels_test = []
         with torch.no_grad():
             for data in data_loader:
+                # print(data)
                 inputs, _ = data
                 outputs = self.forward(inputs)
-                temp = []
-                for i in range(len(outputs)):
-                    temp.extend(outputs[i].detach().numpy())
-                all_outputs.append(temp)
+                all_outputs.append(outputs.detach().numpy())
+                # labels_test.append(np.array(l))
 
             return np.vstack(all_outputs)
 
     def evaluate(self, outputs, labels):
-        outputs = np.array(outputs).T
-        labels = np.array(labels).T
-        num_tasks = labels.shape[0]
-        for i in range(num_tasks):
-            y_pred = []
-            for a in outputs[i]:
-                y_pred.append(np.argmax(a))
-            y_true = np.array(labels[i]).flatten()
-            y_pred = np.array(y_pred)
-            mat = confusion_matrix(y_true, y_pred)
-            acc = accuracy_score(y_true, y_pred)
-            mcc = matthews_corrcoef(y_true, y_pred)
 
-            print('Confusion matrix: ')
-            print(mat)
-            print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+        y_pred = []
+        for a in outputs:
+            y_pred.append(np.argmax(a))
+        y_true = np.array(labels).flatten()
+        y_pred = np.array(y_pred)
+        mat = confusion_matrix(y_true, y_pred)
+        acc = accuracy_score(y_true, y_pred)
+        mcc = matthews_corrcoef(y_true, y_pred)
+
+        print('Confusion matrix: ')
+        print(mat)
+        print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
 
         return mat, acc, mcc
 
@@ -171,6 +173,10 @@ class Model(nn.Module):
             return json.load(open(filepath, 'r'))
         return None
 
+    def collate_fn(batch):
+        return batch, [x for seq in batch for x in seq]
+
+
 def test():
     para_dict = {'num_samples': 1000,
                  'seq_len': 20,
@@ -196,4 +202,3 @@ def test():
 
 if __name__ == '__main__':
     test()
-
