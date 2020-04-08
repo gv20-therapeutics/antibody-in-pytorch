@@ -2,7 +2,7 @@
 
 ### Description
 
-Benchmark dataset consists of Observed Antibody Space (OAS) sequences. We used CDR1, CDR2 and CDR3 sequences to analyze the performance for classification of Naive B cells and Memory B cells. Accuracy score and Matthew's Correlation Coefficient (MCC) was used to compare the results. The following table shows the performance for CNN, LSTM-RNN and Bi-LSTM models on the benchmark dataset:
+Benchmark dataset consists of Observed Antibody Space (OAS) sequences. We used CDR1, CDR2 and CDR3 sequences to analyze the performance for classification of Naive B cells and Memory B cells. Accuracy score and Matthew's Correlation Coefficient (MCC) metrics were used to compare the results. The following table shows the performance for CNN, LSTM-RNN and Bi-LSTM models on the benchmark dataset:
 
 ### Tables of comparison
 
