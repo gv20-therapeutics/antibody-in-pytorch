@@ -10,19 +10,22 @@ def main():
 
     parser = optparse.OptionParser()
 
+    parser.add_option('--index-file', type=str, default='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt')
+    parser.add_option('--seq-dir', type=str, default='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
     parser.add_option('--num-samples', type=int, default=1000)
     parser.add_option('--seq-len', type=int, default=20)
     parser.add_option('--batch-size', type=int, default=5)
-    parser.add_option('--dataset', type=str, default='Multitask')
-    parser.add_option('--model-name', type=str, default='CNN')
+    parser.add_option('--dataset', type=str, default='Naive_Memory_cells')
+    parser.add_option('--model-name', type=str, default='Mason2020_LSTM')
     parser.add_option('--optim-name', type=str, default='Adam')
     parser.add_option('--epoch', type=int, default=2)
     parser.add_option('--learning-rate', type=float, default=1e-3)
     parser.add_option('--step-size', type=int, default=10)
     parser.add_option('--dropout-rate', type=float, default=0.5)
+    parser.add_option('--cdr-len', type=int, default=25)
     parser.add_option('--random-state', type=int, default=100)  # For splitting the data
 
-    parser.add_option('--n-filter', type=int, default=400)  # CNN model
+    parser.add_option('--n_filter', type=int, default=400)  # CNN model
     parser.add_option('--filter-size', type=int, default=3)  # CNN model
     parser.add_option('--fc-hidden-dim', type=int, default=50)  # CNN model
     parser.add_option('--hidden-layer-num', type=int, default=3)  # LSTM-RNN model
@@ -31,13 +34,15 @@ def main():
 
 
     args, _ = parser.parse_args()
-    
+
     para_dict = {'batch_size': args.batch_size,
                  'optim_name': args.optim_name,
                  'epoch': args.epoch,
                  'learning_rate': args.learning_rate,
                  'step_size': args.step_size,
-                 'n-filter': args.n_filter,
+                 'cdr_len': args.cdr_len,
+                 'random_state': args.random_state,
+                 'n_filter': args.n_filter,
                  'filter_size': args.filter_size,
                  'fc_hidden_dim': args.fc_hidden_dim,
                  'dropout_rate': args.dropout_rate,
@@ -114,8 +119,8 @@ def main():
             train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = ML.OAS_data_loader(
                 index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
                 output_field=[para_dict['Multitask'][i][0] for i in range(len(para_dict['Multitask']))],  input_type='CDR3',
-                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
-                pad=para_dict['pad'], model_name=args.model_name,
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'], cdr_len=para_dict['cdr_len'],
+                pad=True, model_name=args.model_name, random_state=para_dict['random_state'],
                 seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
 
             para_dict['model_name'] = 'Multitask_CNN'
@@ -138,8 +143,8 @@ def main():
             train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = ML.OAS_data_loader(
                 index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
                 output_field=[para_dict['Multitask'][i][0] for i in range(len(para_dict['Multitask']))],  input_type='CDR3',
-                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
-                pad=para_dict['pad'], model_name=args.model_name,
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'], cdr_len=para_dict['cdr_len'],
+                pad=True, model_name=args.model_name, random_state=para_dict['random_state'],
                 seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
 
             para_dict['model_name'] = 'Multitask_LSTM'
@@ -161,8 +166,8 @@ def main():
             train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = ML.OAS_data_loader(
                 index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
                 output_field=[para_dict['Multitask'][i][0] for i in range(len(para_dict['Multitask']))],  input_type='CDR3',
-                species_type=para_dict['Multitask'], gapped=para_dict['gapped'],
-                pad=para_dict['pad'], model_name=args.model_name,
+                species_type=para_dict['Multitask'], gapped=para_dict['gapped'], cdr_len=para_dict['cdr_len'],
+                pad=False, model_name=args.model_name, random_state=para_dict['random_state'],
                 seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/')
 
             para_dict['model_name'] = 'Multitask_Bi_LSTM'
@@ -179,79 +184,84 @@ def main():
             labels = [i for _, i in test_eval_loader]
             model.evaluate(outputs, labels, para_dict)
 
+
     elif args.dataset == 'Naive_Memory_cells':
 
         if args.model_name == 'Mason2020_CNN' or args.model_name == 'All':
-            
             from .Models.Mason2020 import CNN
             from .Benchmarks.OAS_dataset import OAS_data_loader
-            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader_for_memory_naive_cells(
-                                index_file=args.index_file,
-                                output_field='BType', input_type='full_length',
-                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
-                                pad=para_dict['pad'], model_name=args.model_name,
-                                seq_dir=args.seq_dir)
+
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(
+                index_file=args.index_file, cdr_len=para_dict['cdr_len'],
+                output_field='BType', input_type='CDR123', random_state=para_dict['random_state'],
+                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                pad=True, model_name=args.model_name,
+                seq_dir=args.seq_dir)
+
             para_dict['model_name'] = 'CNN_Model'
             para_dict['num_classes'] = len(para_dict['cells_type'])
             print('Parameters: ', para_dict)
             model = CNN.CNN_classifier(para_dict)
             model.fit(train_loader)
-#             print('Training_evaluation')
-#             output = model.predict(train_eval_loader)
-#             labels = np.vstack([i for _, i in train_eval_loader])
-#             model.evaluate('Train', output, labels)
+            print('Training_evaluation')
+            output = model.predict(train_eval_loader)
+            labels = np.vstack([i for _, i in train_eval_loader])
+            model.evaluate(output, labels)
             print('Test data evaluation')
             output = model.predict(test_eval_loader)
             labels = np.vstack([i for _, i in test_eval_loader])
-            model.evaluate('Test', output, labels)
-            
+            model.evaluate(output, labels)
+
         if args.model_name == 'Mason2020_LSTM' or args.model_name == 'All':
-            
             from .Models.Mason2020 import LSTM_RNN
             from .Benchmarks.OAS_dataset import OAS_data_loader
-            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader_for_memory_naive_cells(
-                                index_file=args.index_file,
-                                output_field='BType', input_type='full_length',
-                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
-                                pad=para_dict['pad'], model_name=args.model_name,
-                                seq_dir=args.seq_dir)
+
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(
+                index_file=args.index_file, cdr_len=para_dict['cdr_len'],
+                output_field='BType', input_type='CDR123', random_state=para_dict['random_state'],
+                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                pad=True, model_name=args.model_name,
+                seq_dir=args.seq_dir)
+
             para_dict['model_name'] = 'LSTM_RNN_classifier'
             para_dict['num_classes'] = len(para_dict['cells_type'])
             print('Parameters: ', para_dict)
             model = LSTM_RNN.LSTM_RNN_classifier(para_dict)
             model.fit(train_loader)
-#             print('Training_evaluation')
-#             output = model.predict(train_eval_loader)
-#             labels = np.vstack([i for _, i in train_eval_loader])
-#             model.evaluate('Train', output, labels)
+            print('Training_evaluation')
+            output = model.predict(train_eval_loader)
+            labels = np.vstack([i for _, i in train_eval_loader])
+            model.evaluate(output, labels)
             print('Test data evaluation')
             output = model.predict(test_eval_loader)
             labels = np.vstack([i for _, i in test_eval_loader])
-            model.evaluate('Test', output, labels)
-            
+            model.evaluate(output, labels)
+
         if args.model_name == 'Wollacott2019':
-            from .Benchmarks.benchmark import OAS_data_loader_for_memory_naive_cells
-            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader_for_memory_naive_cells(
-                                index_file=args.index_file,
-                                output_field='BType', input_type='full_length',
-                                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
-                                pad=para_dict['pad'], model_name=args.model_name,
-                                seq_dir=args.seq_dir)
-            from .Benchmarks.benchmark import Benchmark
+            from .Benchmarks.OAS_dataset.Benchmark import OAS_data_loader
+
+            train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader(
+                index_file=args.index_file, cdr_len=para_dict['cdr_len'],
+                output_field='BType', input_type='CDR123', random_state=para_dict['random_state'],
+                species_type=para_dict['cells_type'], gapped=para_dict['gapped'],
+                pad=para_dict['pad'], model_name=args.model_name,
+                seq_dir=args.seq_dir)
+
+            from .Benchmarks.OAS_dataset.Benchmark import Benchmark
+            from .Utils.model import Model
             para_dict['model_name'] = 'Benchmark_Wollacott2019'
             para_dict['num_classes'] = len(para_dict['cells_type'])
             print('Parameters: ', para_dict)
             model = Benchmark(para_dict)
             model.fit(train_loader)
-#             print('Train data evaluation')
-#             output = model.predict(train_eval_loader)
-#             labels = np.vstack([i for _, i in train_eval_loader])
-#             model.evaluate('Train', output, labels)
+            print('Train data evaluation')
+            output = Model.predict(model, train_eval_loader)
+            labels = np.vstack([i for _, i in train_eval_loader])
+            model.evaluate(output, labels)
             print('Test data evaluation')
-            output = model.predict(test_eval_loader)
+            output = Model.predict(model, test_eval_loader)
             labels = np.vstack([i for _, i in test_eval_loader])
-            model.evaluate('Test', output, labels)
-
+            model.evaluate(output, labels)
 
     else:
         print('Please provide the dataset name using the --dataset parameter')

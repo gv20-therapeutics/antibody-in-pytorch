@@ -10,6 +10,7 @@ from AIPT.Benchmarks.OAS_dataset.OAS_data_loader import OAS_Dataset, OAS_preload
 from AIPT.Models.Wollacott2019.Bi_LSTM import LSTM_Bi
 from AIPT.Models.Mason2020.LSTM_RNN import LSTM_RNN_classifier
 from AIPT.Models.Mason2020.CNN import CNN_classifier
+from AIPT.Utils.model import Model
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
                 'Link', 'Longitudinal', 'Species', 'Subject', 'Vaccine']
@@ -22,7 +23,7 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 class OAS_Dataset(IterableDataset):
-    def __init__(self, list_IDs, labels, input_type, output_field, gapped=True, pad=False,
+    def __init__(self, list_IDs, labels, input_type, output_field, gapped=True, pad=False, cdr_len=25,
                  seq_dir='./antibody-in-pytorch/Benchmarks/OAS_dataset/data/seq_db/'):
         '''
         list_IDs: file name (prefix) for the loader
@@ -38,6 +39,7 @@ class OAS_Dataset(IterableDataset):
         self.gapped = gapped
         self.seq_dir = seq_dir
         self.output_field = output_field
+        self.cdr_len = cdr_len
 
     def parse_file(self):
 
@@ -53,17 +55,17 @@ class OAS_Dataset(IterableDataset):
             if self.input_type in input_type_dict:
                 X = input_df[input_type_dict[self.input_type]].values
             elif self.input_type == 'CDR3_full':
-                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (self.cdr_len - len(x)))
                 X = [input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
                 # X = [input_df['CDR3-IMGT-111-112'].iloc[nn] for nn in range(len(input_df))]
             elif self.input_type == 'full_length':
-                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (self.cdr_len - len(x)))
                 X = [''.join([input_df[item].iloc[kk] for item in full_seq_order]) for kk in range(len(input_df))]
                 X = [X[nn][:112] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      X[nn][112:] for nn in range(len(input_df))]
             elif self.input_type == 'CDR123':
-                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (24 - len(x)))
+                input_df['CDR3-IMGT-111-112'] = input_df['CDR3-IMGT-111-112'].apply(lambda x: x + '-' * (self.cdr_len - len(x)))
                 X = [input_df['CDR1-IMGT'].iloc[nn] + input_df['CDR2-IMGT'].iloc[nn] + \
                      input_df['CDR3-IMGT'].iloc[nn][:7] + input_df['CDR3-IMGT-111-112'].iloc[nn] + \
                      input_df['CDR3-IMGT'].iloc[nn][7:] for nn in range(len(input_df))]
@@ -96,7 +98,7 @@ class OAS_Dataset(IterableDataset):
 
 class OAS_preload(Dataset):
 
-    def __init__(self, list_IDs, labels, input_type, gapped, seq_dir, species_type, output_field, pad, seq_len=None):
+    def __init__(self, list_IDs, labels, input_type, gapped, seq_dir, species_type, output_field, pad, cdr_len=25, seq_len=None):
         '''
         To read all the data at once and feed into the Dataloader
         pad: Padding required (bool)
@@ -113,7 +115,7 @@ class OAS_preload(Dataset):
         self.input = []
         self.output = []
 
-        dataset = OAS_Dataset(list_IDs, labels, input_type, output_field, gapped, seq_dir=seq_dir)
+        dataset = OAS_Dataset(list_IDs, labels, input_type, output_field, gapped, cdr_len=cdr_len, seq_dir=seq_dir)
         for z in dataset.parse_file():
             train_x, train_y = z
             temp_y = []
@@ -141,8 +143,8 @@ def collate_fn(batch):
     # target = torch.LongTensor(target)
     return [data, target]
 
-def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
-                    pad=False, batch_size=500, model_name='Wollacott2019',
+def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True, cdr_len=25,
+                    pad=False, batch_size=500, model_name='Wollacott2019', random_state=100,
                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
     """
     Create the train and test df
@@ -155,16 +157,16 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     # for m in range(len(output_field)):
     #     list_df = list_df.append(index_df[index_df[output_field[m]].isin(species_type[m][1])])
     # list_df = list_df.drop_duplicates()
-    # list_df = list_df.sample(frac=1).reset_index(drop=True)
+    # list_df = list_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
     list_df = index_df[index_df[output_field[0]].isin(species_type[0][1]) & index_df[output_field[1]].isin(species_type[1][1])]
     list_df.sort_values(by=output_field[0])
     list_df = list_df[::-1]
-    list_df = list_df[:100]
+    list_df = list_df[:5]
     # print(list_df)
 
     # Get the maximum length of a sequence
-    dataset = OAS_Dataset(list_df['file_name'].values, output_field=output_field, labels=None, input_type=input_type, gapped=gapped,
-                          seq_dir=seq_dir)
+    dataset = OAS_Dataset(list_df['file_name'].values, output_field=output_field, labels=None, input_type=input_type,
+                          cdr_len=cdr_len, gapped=gapped, seq_dir=seq_dir)
     input = []
     for z in dataset.parse_file():
         input.extend(z)
@@ -173,7 +175,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     train_split_df = pd.DataFrame()
     test_split_df = pd.DataFrame()
     df = list_df.copy()
-    temp_train = df.sample(frac=0.7)
+    temp_train = df.sample(frac=0.7, random_state=random_state)
     train_split_df = train_split_df.append(temp_train, ignore_index=True)
     temp_test = df.drop(temp_train.index)
     test_split_df = test_split_df.append(temp_test, ignore_index=True)
@@ -195,9 +197,9 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     # generators
     # training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
-    training_set = OAS_preload(partition['train'], dict_labels_train, input_type, gapped, seq_dir=seq_dir,
+    training_set = OAS_preload(partition['train'], dict_labels_train, input_type, gapped, seq_dir=seq_dir, cdr_len=cdr_len,
                                species_type=species_type, output_field=output_field, pad=pad, seq_len=seq_len)
-    testing_set = OAS_preload(partition['test'], dict_labels_test, input_type, gapped, seq_dir=seq_dir,
+    testing_set = OAS_preload(partition['test'], dict_labels_test, input_type, gapped, seq_dir=seq_dir, cdr_len=cdr_len,
                               species_type=species_type, output_field=output_field, pad=pad, seq_len=seq_len)
     # Balanced Sampler for the loader
     # class_sample_count = []
@@ -242,7 +244,38 @@ class CrossEntropyLoss():
                     loss += l
         return loss
 
-class Multitask_Bi_LSTM(LSTM_Bi):
+class Multitask(Model):
+    def __init__(self, para_dict, *args, **kwargs):
+        super(Multitask, self).__init__(para_dict, *args, **kwargs)
+
+    def evaluate(self, outputs, labels, para_dict):
+
+        num_tasks = len(para_dict['num_classes'])
+        labels = torch.tensor(labels).T
+        outputs = torch.tensor(np.vstack(outputs))
+        for i in range(num_tasks):
+            mask = ~torch.isnan(labels[i])
+            label_masked = labels[i][mask]
+            if len(label_masked) is not 0:
+                y_pred = outputs[:, :para_dict['num_classes'][i]]
+                temp = []
+                for a in y_pred:
+                    temp.append(np.argmax(a))
+                temp = np.array(temp)
+                y_pred = temp.reshape(1, temp.shape[0])[mask]
+                y_true = np.array(labels[i]).flatten()
+                y_pred = np.array(y_pred)
+                mat = confusion_matrix(y_true, y_pred)
+                acc = accuracy_score(y_true, y_pred)
+                mcc = matthews_corrcoef(y_true, y_pred)
+
+                print('Confusion matrix: ')
+                print(mat)
+                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+            else:
+                print('No labels in the output class')
+
+class Multitask_Bi_LSTM(Multitask, LSTM_Bi):
     def __init__(self, para_dict, *args, **kwargs):
         super(Multitask_Bi_LSTM, self).__init__(para_dict, *args, **kwargs)
 
@@ -287,34 +320,7 @@ class Multitask_Bi_LSTM(LSTM_Bi):
     def objective(self):
         return CrossEntropyLoss()
 
-    def evaluate(self, outputs, labels, para_dict):
-
-        num_tasks = len(para_dict['num_classes'])
-        labels = torch.tensor(labels).T
-        outputs = torch.tensor(np.vstack(outputs))
-        for i in range(num_tasks):
-            mask = ~torch.isnan(labels[i])
-            label_masked = labels[i][mask]
-            if len(label_masked) is not 0:
-                y_pred = outputs[:, :para_dict['num_classes'][i]]
-                temp = []
-                for a in y_pred:
-                    temp.append(np.argmax(a))
-                temp = np.array(temp)
-                y_pred = temp.reshape(1, temp.shape[0])[mask]
-                y_true = np.array(labels[i]).flatten()
-                y_pred = np.array(y_pred)
-                mat = confusion_matrix(y_true, y_pred)
-                acc = accuracy_score(y_true, y_pred)
-                mcc = matthews_corrcoef(y_true, y_pred)
-
-                print('Confusion matrix: ')
-                print(mat)
-                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
-            else:
-                print('No labels in the output class')
-
-class Multitask_CNN(CNN_classifier):
+class Multitask_CNN(Multitask, CNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
         super(Multitask_CNN, self).__init__(para_dict, *args, **kwargs)
 
@@ -341,34 +347,7 @@ class Multitask_CNN(CNN_classifier):
     def objective(self):
         return CrossEntropyLoss()
 
-    def evaluate(self, outputs, labels, para_dict):
-
-        num_tasks = len(para_dict['num_classes'])
-        labels = torch.tensor(labels).T
-        outputs = torch.tensor(np.vstack(outputs))
-        for i in range(num_tasks):
-            mask = ~torch.isnan(labels[i])
-            label_masked = labels[i][mask]
-            if len(label_masked) is not 0:
-                y_pred = outputs[:, :para_dict['num_classes'][i]]
-                temp = []
-                for a in y_pred:
-                    temp.append(np.argmax(a))
-                temp = np.array(temp)
-                y_pred = temp.reshape(1, temp.shape[0])[mask]
-                y_true = np.array(labels[i]).flatten()
-                y_pred = np.array(y_pred)
-                mat = confusion_matrix(y_true, y_pred)
-                acc = accuracy_score(y_true, y_pred)
-                mcc = matthews_corrcoef(y_true, y_pred)
-
-                print('Confusion matrix: ')
-                print(mat)
-                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
-            else:
-                print('No labels in the output class')
-
-class Multitask_LSTM_RNN(LSTM_RNN_classifier):
+class Multitask_LSTM_RNN(Multitask, LSTM_RNN_classifier):
     def __init__(self, para_dict, *args, **kwargs):
         super(Multitask_LSTM_RNN, self).__init__(para_dict, *args, **kwargs)
 
@@ -396,30 +375,3 @@ class Multitask_LSTM_RNN(LSTM_RNN_classifier):
 
     def objective(self):
         return CrossEntropyLoss()
-
-    def evaluate(self, outputs, labels, para_dict):
-
-        num_tasks = len(para_dict['num_classes'])
-        labels = torch.tensor(labels).T
-        outputs = torch.tensor(np.vstack(outputs))
-        for i in range(num_tasks):
-            mask = ~torch.isnan(labels[i])
-            label_masked = labels[i][mask]
-            if len(label_masked) is not 0:
-                y_pred = outputs[:, :para_dict['num_classes'][i]]
-                temp = []
-                for a in y_pred:
-                    temp.append(np.argmax(a))
-                temp = np.array(temp)
-                y_pred = temp.reshape(1, temp.shape[0])[mask]
-                y_true = np.array(labels[i]).flatten()
-                y_pred = np.array(y_pred)
-                mat = confusion_matrix(y_true, y_pred)
-                acc = accuracy_score(y_true, y_pred)
-                mcc = matthews_corrcoef(y_true, y_pred)
-
-                print('Confusion matrix: ')
-                print(mat)
-                print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
-            else:
-                print('No labels in the output class')
