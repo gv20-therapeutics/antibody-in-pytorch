@@ -4,30 +4,36 @@
 
 Benchmark dataset consists of Observed Antibody Space (OAS) sequences. We used CDR1, CDR2 and CDR3 sequences to analyze the performance for classification of Naive B cells and Memory B cells. Accuracy score and Matthew's Correlation Coefficient (MCC) metrics were used to compare the results. The following table shows the performance for CNN, LSTM-RNN and Bi-LSTM models on the benchmark dataset:
 
-### Hyperparameter optimization 
+### Hyperparameter optimization parameters and the corresponding ranges
 
 #### Mason2020 CNN classifier:
 
-1. n-filter: IntegerParameter(300, 600),
-2. filter-size: IntegerParameter(2, 8),
-3. fc-hidden-dim: IntegerParameter(50, 400),
-4. epoch: IntegerParameter(25, 50),
-5. learning-rate: ContinuousParameter(1e-4,1e-1)
+| Parameters | Search range |
+| :--: | :--: |
+| n-filter | 300 - 600 |
+| filter-size | 2 - 8 |
+| fc-hidden-dim | 50 - 400 |
+| epoch | 25 - 50 |
+| learning-rate | 0.0001 - 0.1 |
 
 #### Mason2020 LSTM-RNN classifier:
 
-1. hidden-layer-num: IntegerParameter(2, 10),
-2. hidden-dim: IntegerParameter(50, 300),
-3. epoch: IntegerParameter(25, 75),
-4. learning-rate: ContinuousParameter(1e-4,1e-1)
+| Parameters | Search range |
+| :--: | :--: |
+| hidden-layer-num | 2 - 10 |
+| hidden-dim | 50 - 300 |
+| epoch | 25 - 75 |
+| learning-rate | 0.0001 - 0.1 |
 
 #### Wollacott2019 Bi-LSTM classifier:
 
-1. embedding-dim: IntegerParameter(50, 300),
-2. hidden-dim: IntegerParameter(50, 300),
-3. epoch: IntegerParameter(25, 75),
-4. learning-rate: ContinuousParameter(1e-4,1e-1)
-                       
+| Parameters | Search range |
+| :--: | :--: |
+| embedding-dim | 50 - 300 |
+| hidden-dim | 50 - 300 |
+| epoch | 25 - 75 |
+| learning-rate | 0.0001 - 0.1 |
+
 #### Train and test sequence count:
 
 - Number of train sequences: 164,687
