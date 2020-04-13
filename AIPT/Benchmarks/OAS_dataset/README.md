@@ -47,6 +47,6 @@ Benchmark dataset consists of Observed Antibody Space (OAS) sequences. We used C
 
 | Models | Accuracy |  MCC  | Best parameters after optimization |
 | :----: | :------: | :----: | :--: | 
-| CNN | 0.796 | 0.599 | epoch=68, n_filter=389, fc_hidden_dim=157, filter_size=4, learning_rate=0.002 |
+| CNN | 0.786 | 0.578 | epoch=68, n_filter=389, fc_hidden_dim=157, filter_size=4, learning_rate=0.002 |
 | LSTM-RNN | 0.759 | 0.518 | epoch=60, hidden_dim=175, hidden_layer_num=3, learning_rate=0.002 |
 | Bi-LSTM | 0.697 | 0.398 | epoch=28, embedding_dim=251, hidden_dim=135, learning_rate=0.001 |
