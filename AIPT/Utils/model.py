@@ -16,15 +16,9 @@ class CrossEntropyLoss():
     def __init__(self, *args, **kwargs):
         super(CrossEntropyLoss, self).__init__(*args, **kwargs)
 
-    def __call__(self, outputs, targets):
-
-        len_samples = targets.shape[0]
-        batch_size = outputs.shape[0]
-        softmax = nn.LogSoftmax()
-        outputs = softmax(outputs)
-        outputs = outputs[range(batch_size), torch.tensor(targets).type(torch.long)]
-        loss = - torch.sum(outputs) / len_samples
-
+    def __call__(self, para_dict, outputs, targets):
+        l = nn.CrossEntropyLoss()
+        loss = l(outputs, torch.tensor(targets).type(torch.long))
         return loss
 
 class Model(nn.Module):
@@ -72,9 +66,6 @@ class Model(nn.Module):
     def forward(self, x):
 
         x = x.view(x.shape[0], 20 * self.para_dict['seq_len'])
-        x = self.fc(x)
-        x = torch.sigmoid(x)
-
         return x
 
     def objective(self):
@@ -104,12 +95,11 @@ class Model(nn.Module):
             print('Epoch %d: ' % (e + 1), end='')
             total_loss = 0
             for input in data_loader:
-                outputs_train = []
                 features, labels = input
                 # print(labels)
                 logps = self.forward(features)
                 loss = self.objective()
-                loss = loss(logps, labels) # torch.tensor(labels).type(torch.long)
+                loss = loss(self.para_dict, logps, labels)  # torch.tensor(labels).type(torch.long)
                 total_loss += loss
                 # outputs_train.append(logps.detach().numpy())
                 optimizer.zero_grad()
@@ -119,6 +109,21 @@ class Model(nn.Module):
 
             self.save_model('Epoch_' + str(e + 1), self.state_dict())
             print('Loss=%.3f' % (total_loss))
+
+    # def predict(self, data_loader):
+    #
+    #     self.eval()
+    #     test_loss = 0
+    #     all_outputs = []
+    #     with torch.no_grad():
+    #         for data in data_loader:
+    #             inputs, _ = data
+    #             outputs = self.forward(inputs)
+    #             temp = []
+    #             for i in range(len(outputs)):
+    #                 temp.append(outputs[i].detach().numpy())
+    #             all_outputs.append(temp)
+    #         return np.vstack(all_outputs)
 
     def predict(self, data_loader):
 
@@ -136,8 +141,30 @@ class Model(nn.Module):
 
             return np.vstack(all_outputs)
 
+    # def evaluate(self, outputs, labels):
+    #     outputs = np.array(outputs).T
+    #     labels = np.array(labels).T
+    #     num_tasks = labels.shape[0]
+    #     for i in range(num_tasks):
+    #         y_pred = []
+    #         for a in outputs[i]:
+    #             y_pred.append(np.argmax(a))
+    #         y_true = np.array(labels[i]).flatten()
+    #         y_pred = np.array(y_pred)
+    #         mat = confusion_matrix(y_true, y_pred)
+    #         acc = accuracy_score(y_true, y_pred)
+    #         mcc = matthews_corrcoef(y_true, y_pred)
+    #
+    #         print('Confusion matrix: ')
+    #         print(mat)
+    #         print('Accuracy = %.3f, MCC = %.3f' % (acc, mcc))
+    #
+    #     return mat, acc, mcc
+
     def evaluate(self, outputs, labels):
 
+        # outputs = np.array(outputs).T
+        # labels = np.array(labels).T
         y_pred = []
         for a in outputs:
             y_pred.append(np.argmax(a))

@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from AIPT.Models.Wollacott2019.Bi_LSTM import LSTM_Bi
 from AIPT.Utils import loader
 from AIPT.Benchmarks.OAS_dataset.OAS_data_loader import OAS_Dataset, OAS_preload
+from AIPT.Utils.model import CrossEntropyLoss
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
                 'Link', 'Longitudinal', 'Species', 'Subject', 'Vaccine']
@@ -21,7 +22,7 @@ def collate_fn(batch):
     return [data, target]
 
 def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
-                    pad=True, batch_size=500, model_name='All', column_name='Species',
+                    pad=True, batch_size=500, model_name='All', cdr_len=25, random_state=100,
                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
     """
     Create the train and test df
@@ -29,14 +30,11 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     """
 
     index_df = pd.read_csv(index_file, sep='\t')
-    index_df = index_df[index_df.valid_entry_num > 1]
-    list_df = index_df[index_df[column_name].isin(species_type)]
-    list_df.sort_values(by=[column_name])
-    list_df = list_df[::-1]
-    list_df = list_df[:50]
+    index_df = index_df[index_df.valid_entry_num >= 1]
+    list_df = index_df[index_df[output_field].isin(species_type)]
 
     # Get the maximum length of a sequence
-    dataset = OAS_Dataset(list_df['file_name'].values, labels=None, input_type=input_type, gapped=gapped, seq_dir=seq_dir)
+    dataset = OAS_Dataset(list_df['file_name'].values, labels=None, input_type=input_type, gapped=gapped, cdr_len=cdr_len, seq_dir=seq_dir)
     input = []
     for z in dataset.parse_file():
         input.extend(z)
@@ -48,9 +46,9 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
 
     for a in ls_ls:
         temp_df = list_df.copy()
-        df = temp_df[temp_df[column_name].isin(a)]
-        df_copy = df.copy()
-        temp_train = df_copy.sample(frac=0.7)
+        df = temp_df[temp_df[output_field].isin(a)]
+        df_copy = df.copy() # TODO: why make a copy?
+        temp_train = df_copy.sample(frac=0.7, random_state=random_state)
         train_split_df = train_split_df.append(temp_train, ignore_index=True)
         temp_test = df_copy.drop(temp_train.index)
         test_split_df = test_split_df.append(temp_test, ignore_index=True)
@@ -68,11 +66,10 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     partition = {'train': train_split_df['file_name'].values, 'test': test_split_df['file_name'].values}  # IDs, to be done!
 
     # generators
-    # training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
     training_set = OAS_preload(partition['train'], labels_train, input_type, gapped, seq_dir=seq_dir,
-                               species_type=species_type, pad=pad, seq_len=seq_len)
+                               species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
     testing_set = OAS_preload(partition['test'], labels_test, input_type, gapped, seq_dir=seq_dir,
-                               species_type=species_type, pad=pad, seq_len=seq_len)
+                               species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
 
     # Balanced Sampler for the loader
     class_sample_count = []
@@ -139,22 +136,7 @@ class Benchmark(LSTM_Bi):
         return scores
 
     def objective(self):
-        return nn.CrossEntropyLoss()
-
-    def predict(self, data_loader):
-
-        self.eval()
-        test_loss = 0
-        all_outputs = []
-        labels_test = []
-        with torch.no_grad():
-            for data in data_loader:
-                inputs, _ = data
-                outputs = self.forward(inputs)
-                all_outputs.append(outputs.detach().numpy())
-                # labels_test.append(np.array(l))
-
-            return np.vstack(all_outputs)
+        return CrossEntropyLoss()
 
 def test():
     para_dict = {'model_name': 'Benchmark_Wollacott2019',
