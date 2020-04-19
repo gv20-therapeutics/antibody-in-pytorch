@@ -44,6 +44,7 @@ class CNN_classifier(Model):
         self.fc1 = nn.Linear(in_features = int(np.ceil((self.para_dict['seq_len']-self.para_dict['filter_size']) / self.para_dict['stride'])) * self.para_dict['n_filter'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
+        self.dropout = nn.Dropout(p = self.para_dict['dropout_rate'])
         
         if self.para_dict['GPU']:
             self.cuda()
@@ -59,7 +60,7 @@ class CNN_classifier(Model):
         #X = torch.FloatTensor(Xs)
         X = X.permute(0,2,1)
         
-        out = F.dropout(self.conv1(X), p = self.para_dict['dropout_rate'])
+        out = self.dropout(self.conv1(X))
         out = self.pool(out)
         out = out.reshape(batch_size, -1)
         out = F.relu(self.fc1(out))

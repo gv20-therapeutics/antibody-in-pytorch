@@ -51,6 +51,7 @@ class CNNx2_regressor(CNN_regressor):
         self.fc1 = nn.Linear(in_features = int(cnn_flatten_size2) * self.para_dict['n_filter2'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 1)
+        self.dropout = nn.Dropout(p = self.para_dict['dropout_rate'])
 
         if self.para_dict['GPU']:
             self.cuda()
@@ -69,7 +70,7 @@ class CNNx2_regressor(CNN_regressor):
         out = F.relu(self.conv2(out))
         out = self.pool2(out)
         out = out.reshape(batch_size, -1)
-        out = F.dropout(F.relu(self.fc1(out)), p=self.para_dict['dropout_rate'])
+        out = self.dropout(F.relu(self.fc1(out)))
         out = self.fc2(out)
 
         return out

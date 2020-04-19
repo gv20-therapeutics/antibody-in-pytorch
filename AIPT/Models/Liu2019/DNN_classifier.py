@@ -28,6 +28,7 @@ class DNN_classifier(CNN_classifier):
         self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], 
                              out_features = self.para_dict['fc_hidden_dim'])
         self.fc3 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2)
+        self.dropout = nn.Dropout(p = self.para_dict['dropout_rate'])
 
         if self.para_dict['GPU']:
             self.cuda()
@@ -41,8 +42,8 @@ class DNN_classifier(CNN_classifier):
             X = torch.FloatTensor(Xs)
         X = torch.flatten(X, start_dim=1)
         
-        out = F.dropout(F.relu(self.fc1(X)), p = self.para_dict['dropout_rate'])
-        out = F.dropout(F.relu(self.fc2(out)), p = self.para_dict['dropout_rate'])
+        out = self.dropout(F.relu(self.fc1(X)))
+        out = self.dropout(F.relu(self.fc2(out)))
         out = F.softmax(self.fc3(out))
 
         return out

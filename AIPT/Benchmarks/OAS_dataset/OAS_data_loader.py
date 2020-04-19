@@ -134,6 +134,7 @@ class OAS_preload(Dataset):
             train_y = le.transform(train_y)
             self.input.extend(train_x)
             self.output.extend(train_y)
+
         self.input = encode_index(data=self.input, pad=pad, gapped=gapped, max_len_local=self.seq_len)
 
     def __len__(self):
@@ -159,10 +160,6 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num >= 1]
     list_df = index_df[index_df[output_field].isin(species_type)]
-    # list_df = list_df.sort_values(by=[output_field])
-    list_df = list_df[::-1]
-    list_df = list_df[:5]
-    # print(list_df)
 
     # Get the maximum length of a sequence
     dataset = OAS_Dataset(list_df['file_name'].values, labels=None, input_type=input_type, gapped=gapped, cdr_len=cdr_len, seq_dir=seq_dir)
@@ -208,6 +205,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
                                species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
     testing_set = OAS_preload(partition['test'], labels_test, input_type, gapped, seq_dir=seq_dir,
                               species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
+
     # Balanced Sampler for the loader
     class_sample_count = []
     for a in np.unique(training_set.output):

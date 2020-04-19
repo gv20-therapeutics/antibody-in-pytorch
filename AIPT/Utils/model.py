@@ -17,10 +17,8 @@ class CrossEntropyLoss():
         super(CrossEntropyLoss, self).__init__(*args, **kwargs)
 
     def __call__(self, para_dict, outputs, targets):
-
         l = nn.CrossEntropyLoss()
         loss = l(outputs, torch.tensor(targets).type(torch.long))
-
         return loss
 
 class Model(nn.Module):
@@ -98,6 +96,7 @@ class Model(nn.Module):
             total_loss = 0
             for input in data_loader:
                 features, labels = input
+                # print(labels)
                 logps = self.forward(features)
                 loss = self.objective()
                 loss = loss(self.para_dict, logps, labels)  # torch.tensor(labels).type(torch.long)

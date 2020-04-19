@@ -36,8 +36,10 @@ class LSTM_RNN_classifier(Model):
     def net_init(self):
         self.lstm = nn.LSTM(self.in_channels, self.para_dict['hidden_dim'], batch_first=False,
                             num_layers=self.para_dict['hidden_layer_num'], dropout=self.para_dict['dropout_rate'])
+
         if type(self.para_dict['num_classes']) is not list:
             self.fc = nn.Linear(self.para_dict['hidden_dim'], self.para_dict['num_classes'])
+
         # self.fixed_len = self.para_dict['fixed_len']
         # self.forward = self.forward_flen if self.fixed_len else self.forward_vlen
 
@@ -60,10 +62,12 @@ class LSTM_RNN_classifier(Model):
 
     def hidden(self, Xs):
         batch_size = len(Xs)
+
         X = loader.encode_data(np.array(Xs, dtype=int), aa_list=self.aa_list)
         X = torch.FloatTensor(X)
         X = X.permute(1, 0, 2)
-        out, _ = self.lstm(X)
+        print(X.shape)
+        out, _ = self.lstm(X, (self.h0, self.c0))
         out = out[-1, :, :].reshape(batch_size, -1)  # use the last output as input for next layer
 
         return out
