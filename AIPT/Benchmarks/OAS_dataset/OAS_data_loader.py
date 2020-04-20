@@ -160,6 +160,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     index_df = pd.read_csv(index_file, sep='\t')
     index_df = index_df[index_df.valid_entry_num >= 1]
     list_df = index_df[index_df[output_field].isin(species_type)]
+    list_df = list_df[:4]
 
     # Get the maximum length of a sequence
     dataset = OAS_Dataset(list_df['file_name'].values, labels=None, input_type=input_type, gapped=gapped, cdr_len=cdr_len, seq_dir=seq_dir)

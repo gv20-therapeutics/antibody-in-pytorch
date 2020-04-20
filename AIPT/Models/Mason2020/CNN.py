@@ -30,7 +30,7 @@ class CNN_classifier(Model):
             self.para_dict['pad'] = True
         if 'gapped' not in para_dict:
             self.para_dict['gapped'] = True
-        if para_dict['gapped']:
+        if self.para_dict['gapped']:
             self.aa_list = AA_GP
         else:
             self.aa_list = AA_LS

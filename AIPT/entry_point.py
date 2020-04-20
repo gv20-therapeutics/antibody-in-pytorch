@@ -16,7 +16,7 @@ def main():
     parser.add_option('--seq-len', type=int, default=20)
     parser.add_option('--batch-size', type=int, default=5)
     parser.add_option('--dataset', type=str, default='Naive_Memory_cells')
-    parser.add_option('--model-name', type=str, default='Mason2020_LSTM')
+    parser.add_option('--model-name', type=str, default='Wollacott2019')
     parser.add_option('--optim-name', type=str, default='Adam')
     parser.add_option('--epoch', type=int, default=2)
     parser.add_option('--learning-rate', type=float, default=1e-3)
@@ -76,7 +76,7 @@ def main():
         Runs all models or specific model on OAS dataset
         """
         from .Benchmarks.OAS_dataset import OAS_data_loader
-        train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info.txt',
+        train_loader, train_eval_loader, test_eval_loader, para_dict['seq_len'] = OAS_data_loader.OAS_data_loader(index_file='AIPT/Benchmarks/OAS_dataset/data/OAS_meta_info_temp.txt',
                                                       output_field='Species', input_type='CDR3_full', batch_size=para_dict['batch_size'],
                                                       species_type=para_dict['species_type'], gapped=para_dict['gapped'],
                                                       pad=para_dict['pad'], model_name= args.model_name,
@@ -88,12 +88,12 @@ def main():
             Test_Mason2020_CNN(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
         if args.model_name == 'Mason2020_LSTM' or args.model_name == 'All':
-            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM_RNN
-            Test_Mason2020_LSTM_RNN(para_dict, train_loader, train_eval_loader, test_eval_loader)
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Mason2020_LSTM
+            Test_Mason2020_LSTM(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
         if args.model_name == 'Wollacott2019':
-            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019_Bi_LSTM
-            Test_Wollacott2019_Bi_LSTM(para_dict, train_loader, train_eval_loader, test_eval_loader)
+            from .Benchmarks.OAS_dataset.comparison_OAS import Test_Wollacott2019
+            Test_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eval_loader)
 
     elif args.dataset == 'Benchmark':
 

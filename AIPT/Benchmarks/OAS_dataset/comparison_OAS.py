@@ -1,10 +1,10 @@
 import numpy as np
 
+from AIPT.Models.Mason2020 import CNN
 from AIPT.Models.Mason2020 import LSTM_RNN
 from AIPT.Models.Wollacott2019 import Bi_LSTM
 from AIPT.Benchmarks.OAS_dataset.Benchmark import Benchmark
 from AIPT.Utils.model import Model
-
 
 def Test_Mason2020_CNN(para_dict, train_loader, train_eval_loader, test_eval_loader):
     """
@@ -13,16 +13,16 @@ def Test_Mason2020_CNN(para_dict, train_loader, train_eval_loader, test_eval_loa
     para_dict['model_name'] = 'CNN_Model'
     para_dict['num_classes'] = len(para_dict['species_type'])
     print('Parameters: ', para_dict)
-    # model = CNN.CNN_classifier(para_dict)
-    # model.fit(train_loader)
-    # print('Train data evaluation')
-    # output = model.predict(train_eval_loader)
-    # labels = np.vstack([i for _, i in train_eval_loader])
-    # model.evaluate(output, labels)
-    # print('Test data evaluation')
-    # output = model.predict(test_eval_loader)
-    # labels = np.vstack([i for _, i in test_eval_loader])
-    # model.evaluate(output, labels)
+    model = CNN.CNN_classifier(para_dict)
+    model.fit(train_loader)
+    print('Train data evaluation')
+    output = model.predict(train_eval_loader)
+    labels = np.vstack([i for _, i in train_eval_loader])
+    model.evaluate(output, labels)
+    print('Test data evaluation')
+    output = model.predict(test_eval_loader)
+    labels = np.vstack([i for _, i in test_eval_loader])
+    model.evaluate(output, labels)
 
 def Test_Mason2020_LSTM(para_dict, train_loader, train_eval_loader, test_eval_loader):
     """
@@ -42,7 +42,7 @@ def Test_Mason2020_LSTM(para_dict, train_loader, train_eval_loader, test_eval_lo
     labels = np.vstack([i for _, i in test_eval_loader])
     model.evaluate(output, labels)
 
-def Test_Wollacott2019(para_dict, train_loader, test_loader):
+def Test_Wollacott2019(para_dict, train_loader, train_eval_loader, test_eval_loader):
     """
     Run the Bi_LSTM model on OAS dataset
     """
@@ -53,7 +53,7 @@ def Test_Wollacott2019(para_dict, train_loader, test_loader):
     #     output = model.predict(test_loader)
     #     labels = np.vstack([i for _, i in test_loader])
     #     model.evaluate(output, labels)
-    dict_class = model.roc_plot(test_loader)
+    dict_class = model.roc_plot(train_eval_loader)
     model.plot_score_distribution(dict_class)
 
 

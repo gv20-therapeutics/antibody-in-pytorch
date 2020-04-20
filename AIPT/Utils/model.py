@@ -12,9 +12,9 @@ from . import loader
 
 warnings.filterwarnings("ignore")
 
-class CrossEntropyLoss():
+class CrossEntropy():
     def __init__(self, *args, **kwargs):
-        super(CrossEntropyLoss, self).__init__(*args, **kwargs)
+        super(CrossEntropy, self).__init__(*args, **kwargs)
 
     def __call__(self, para_dict, outputs, targets):
         l = nn.CrossEntropyLoss()
@@ -69,7 +69,7 @@ class Model(nn.Module):
         return x
 
     def objective(self):
-        return CrossEntropyLoss()
+        return CrossEntropy()
 
     def optimizers(self):
 
@@ -96,7 +96,6 @@ class Model(nn.Module):
             total_loss = 0
             for input in data_loader:
                 features, labels = input
-                # print(labels)
                 logps = self.forward(features)
                 loss = self.objective()
                 loss = loss(self.para_dict, logps, labels)  # torch.tensor(labels).type(torch.long)

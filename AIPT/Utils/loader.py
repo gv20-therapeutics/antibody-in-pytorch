@@ -105,7 +105,7 @@ def synthetic_DataLoader(num_samples=1000, seq_len = 10, aa_list=AA_LS, test_siz
 
     return train_loader, test_loader
 
-def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3):
+def synthetic_data_loader(num_samples=1000, seq_len=10, aa_list=AA_LS, test_size=0.3, batch_size=50):
     """
     Loaders for Wollacott model with collate function
     """

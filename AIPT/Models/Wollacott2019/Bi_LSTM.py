@@ -30,6 +30,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence, pad_sequence
 
+class NLLloss():
+    def __init__(self, *args, **kwargs):
+        super(NLLloss, self).__init__(*args, **kwargs)
+
+    def __call__(self, para_dict, outputs, targets):
+        l = nn.NLLLoss()
+        loss = l(outputs, torch.tensor(targets).type(torch.long))
+        return loss
 
 class LSTM_Bi(Model):
     def __init__(self, para_dict, *args, **kwargs):
@@ -183,7 +191,7 @@ class LSTM_Bi(Model):
         return scores
 
     def objective(self):
-        return nn.NLLLoss()
+        return NLLloss()
 
     def collate_fn(batch):
         return batch, [x for seq in batch for x in seq]

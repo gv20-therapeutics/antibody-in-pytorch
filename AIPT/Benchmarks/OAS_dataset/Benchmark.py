@@ -8,7 +8,8 @@ from torch.utils.data import DataLoader
 from AIPT.Models.Wollacott2019.Bi_LSTM import LSTM_Bi
 from AIPT.Utils import loader
 from AIPT.Benchmarks.OAS_dataset.OAS_data_loader import OAS_Dataset, OAS_preload
-from AIPT.Utils.model import CrossEntropyLoss
+# from AIPT.Utils.model import CrossEntropyLoss
+from AIPT.Utils.model import CrossEntropy
 
 valid_fields = ['Age', 'BSource', 'BType', 'Chain', 'Disease', 'Isotype', \
                 'Link', 'Longitudinal', 'Species', 'Subject', 'Vaccine']
@@ -136,7 +137,7 @@ class Benchmark(LSTM_Bi):
         return scores
 
     def objective(self):
-        return CrossEntropyLoss()
+        return CrossEntropy()
 
 def test():
     para_dict = {'model_name': 'Benchmark_Wollacott2019',
