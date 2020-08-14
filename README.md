@@ -49,6 +49,7 @@ Run without any parameter will go through all the test() functions.
 1. Mason et al. 2020, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
 2. Wollacott et al. 2019, Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
 3. Liu et al. 2019, Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
+4. Chen et al. 2020, Predicting Antibody Developability from Sequence using Machine Learning. [https://www.biorxiv.org/content/10.1101/2020.06.18.159798v1]
 
 ## Related works
 
