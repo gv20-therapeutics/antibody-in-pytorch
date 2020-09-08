@@ -47,7 +47,7 @@ Run without any parameter will go through all the test() functions.
 ## References
 
 1. Hu and Liu 2019, DeepBCR: Deep learning framework for cancer-type classification and binding affinity estimation using B cell receptor repertoires. [https://www.biorxiv.org/content/10.1101/731158v1]
-2. Mason et al. 2020, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
+2. Mason et al. 2019, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
 3. Liu et al. 2019, Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
 4. Wollacott et al. 2019, Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
 5. Chen et al. 2020, Predicting Antibody Developability from Sequence using Machine Learning. [https://www.biorxiv.org/content/10.1101/2020.06.18.159798v1]
