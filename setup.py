@@ -15,6 +15,7 @@ setup(
               "AIPT.Models.Liu2019",
               "AIPT.Models.Mason2020",
               "AIPT.Models.Wollacott2019",
+              "AIPT.Models.Beshnova2020",
               "AIPT.Benchmarks",
               "AIPT.Benchmarks.OAS_dataset",
               "AIPT.Benchmarks.Liu2019_enrichment"],

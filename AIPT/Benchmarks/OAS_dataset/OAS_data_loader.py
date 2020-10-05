@@ -1,4 +1,5 @@
 from itertools import islice, chain
+import os
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
 
-def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None):
+def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None, dtype=np.int):
 
     """
     Convert the sequence into a matrix of index representing the amino acid
@@ -31,12 +32,12 @@ def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None
         aa_list = list(AA_LS)
     for i, seq in enumerate(data):
         if max_len_local is None or len(seq) <= max_len_local:
-            seq_i = np.zeros(len(seq), dtype=np.int)
+            seq_i = np.zeros(len(seq), dtype=dtype)
             for j, s in enumerate(seq):
                 seq_i[j] = aa_list.index(s)
             if pad == True:
                 arr_create = (max_len_local - len(seq))
-                temp = np.full(arr_create, -1, dtype=np.int)
+                temp = np.full(arr_create, -1, dtype=dtype)
                 seq_i = np.concatenate([seq_i,temp])
             X.append(seq_i)
     return X
@@ -63,7 +64,7 @@ class OAS_Dataset(IterableDataset):
     def parse_file(self):
 
         # load data file
-        input_fnames = [self.seq_dir + ID + '.txt' for ID in self.list_IDs]
+        input_fnames = [os.path.join(self.seq_dir, f'{ID}.txt') for ID in self.list_IDs]
         for m in range(len(input_fnames)):
             input_fname = input_fnames[m]
             # print(input_fname)
@@ -155,6 +156,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     """
     Create the train and test df
     return: Train and test loader
+    todo: default should not be wollacott2019
     """
 
     index_df = pd.read_csv(index_file, sep='\t')
