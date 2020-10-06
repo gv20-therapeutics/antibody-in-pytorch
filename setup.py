@@ -11,6 +11,7 @@ setup(
     name="AIPT",
     packages=["AIPT",
               "AIPT.Utils",
+              "AIPT.Utils.Dev",
               "AIPT.Models",
               "AIPT.Models.Liu2019",
               "AIPT.Models.Mason2020",

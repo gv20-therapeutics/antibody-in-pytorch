@@ -183,7 +183,11 @@ class Model(nn.Module):
         torch.save(model, os.path.join(self.save_path, filename))
 
     def load_model(self):
-
+        '''
+        loads model weights
+        
+        @returns: most recent epoch (0 if no saved models found)
+        '''
         for e in range(self.para_dict['epoch'], 0, -1):
             if os.path.isfile(os.path.join(self.save_path, 'Epoch_' + str(e))):
                 # print(os.path.join(self.save_path, 'Epoch_' + str(e)))

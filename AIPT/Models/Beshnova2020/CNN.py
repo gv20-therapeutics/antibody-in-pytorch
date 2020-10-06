@@ -12,6 +12,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import pdb
+import AIPT.Utils.Dev.dev_utils as dev_utils
+
+DEBUG_MODE = True
+if DEBUG_MODE:
+    dev_utils.get_mod_time(__file__, verbose=True)
 
 class CNN(Model):
     def __init__(self, para_dict, embedding_fn, *args, **kwargs):
@@ -189,17 +194,21 @@ class CNN(Model):
         return Xs
 
     def fit(self, data_loader):
+        print('fit called')
 
         self.net_init()
         saved_epoch = self.load_model()
+        if saved_epoch:
+            print('Found saved model from Epoch', saved_epoch)
+        else:
+            print('No saved model found.')
 
         self.train()
         optimizer = self.optimizers()
         #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.para_dict['step_size'], gamma=0.5 ** (self.para_dict['epoch'] / self.para_dict['step_size']))
 
         loss_func = self.objective()
-        print(loss_func)
-        
+        outputs_train = []
         for e in range(saved_epoch, self.para_dict['epoch']):
             total_loss = 0
             outputs_train = []
@@ -225,7 +234,8 @@ class CNN(Model):
                 
                 labels = np.concatenate([i for _, i in data_loader])
                 _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
-
+        if outputs_train:
+            return np.vstack(outputs_train)
     def evaluate(self, outputs, labels):
         y_pred = []
         # print(outputs.shape)
