@@ -14,6 +14,9 @@ import torch.optim as optim
 import pdb
 import AIPT.Utils.Dev.dev_utils as dev_utils
 
+from torch.utils.tensorboard import SummaryWriter
+from AIPT.Utils.plotting import plot_confusion_matrix, plot_to_image
+
 DEBUG_MODE = True
 if DEBUG_MODE:
     dev_utils.get_mod_time(__file__, verbose=True)
@@ -43,6 +46,15 @@ class CNN(Model):
             self.para_dict['stride'] = 2 # from paper
         if 'GPU' not in para_dict:
             self.para_dict['GPU'] = False
+            
+        # logging
+        if 'run_name' not in para_dict:
+            self.para_dict['run_name'] = f'default_run' # todo: add timestamp
+        if 'log_dir' not in para_dict:
+            log_dir = 'logs'
+            
+        self.writer = SummaryWriter(log_dir=self.para_dict['log_dir'])
+        
         
         self.embedding_fn = embedding_fn
 
@@ -102,6 +114,7 @@ class CNN(Model):
         return out
 
     def forward4predict(self, Xs):
+#         pdb.set_trace()
 #         batch_size = len(Xs)
 
 #         if self.para_dict['GPU']:
@@ -116,9 +129,8 @@ class CNN(Model):
 #         out = out.reshape(batch_size, -1)
 #         out = F.relu(self.fc1(out))
 #         out = torch.sigmoid(self.fc2(out))
-        out = self.forward(Xs)
-        
-        return out
+#         out = self.forward(Xs)
+        return self.forward(Xs)
 
     def forward4optim(self, Xs):
         
@@ -193,7 +205,7 @@ class CNN(Model):
                 
         return Xs
 
-    def fit(self, data_loader):
+    def fit(self, data_loader, test_loader=None):
         print('fit called')
 
         self.net_init()
@@ -212,8 +224,10 @@ class CNN(Model):
         for e in range(saved_epoch, self.para_dict['epoch']):
             total_loss = 0
             outputs_train = []
+            labels_train = []
             for input in data_loader:
                 features, labels = input
+                labels_train.append(labels)
                 logps = self.forward(features)
                 if self.para_dict['GPU']:
                     loss = loss_func(self.para_dict, logps, labels.type(torch.long).cuda())
@@ -228,14 +242,39 @@ class CNN(Model):
                 optimizer.step()
             #scheduler.step()
             
-            if (e + 1) % 10 == 0:
+            self.writer.add_scalar('Loss/train', total_loss, e)
+            if test_loader is not None:
+                outputs_test, labels_test, test_loss = self.predict(test_loader)
+                self.writer.add_scalar('Loss/test', test_loss, e)
+            
+            if (e + 1) % 5 == 0:
                 self.save_model('Epoch_' + str(e + 1), self.state_dict())
-                print('Epoch: %d: Loss=%.3f' % (e + 1, total_loss))
+                print('Epoch: %d: Train Loss=%.3f' % (e + 1, total_loss)) # todo: refactor total_loss to train_loss
+                tail_n = 5
+#                 if outputs_train and DEBUG_MODE:
+#                     print(outputs_train[-tail_n:], labels_train[-tail_n:])
                 
                 labels = np.concatenate([i for _, i in data_loader])
-                _, _, _, = self.evaluate(np.concatenate(outputs_train), labels)
+                train_cm, train_acc, train_mcc = self.evaluate(np.concatenate(outputs_train), labels)
+                self.writer.add_scalar('Accuracy/train', train_acc, e)
+                self.writer.add_scalar('MCC/train', train_mcc, e)
+                cm_plot_train = plot_confusion_matrix(train_cm, self.para_dict['classes'])
+                self.writer.add_image('Confusion/train', plot_to_image(cm_plot_train), e)
+                print()
+            
+                if test_loader is not None:
+#                     pdb.set_trace()
+                    print('Epoch: %d: Test Loss=%.3f' % (e + 1, test_loss))
+                    test_cm, test_acc, test_mcc = self.evaluate(outputs_test, labels_test)
+                    self.writer.add_scalar('Accuracy/test', test_acc, e)
+                    self.writer.add_scalar('MCC/test', test_mcc, e)
+                    cm_plot_test = plot_confusion_matrix(test_cm, self.para_dict['classes'])
+                    self.writer.add_image('Confusion/test', plot_to_image(cm_plot_test), e)
+                    print(20*'=' + '\n\n')
+
         if outputs_train:
-            return np.vstack(outputs_train)
+            return np.concatenate(outputs_train)
+        
     def evaluate(self, outputs, labels):
         y_pred = []
         # print(outputs.shape)
@@ -263,18 +302,23 @@ class CNN(Model):
         test_loss = 0
         all_outputs = []
         labels_test = []
+        loss_func = self.objective()
+        total_loss = 0
         with torch.no_grad():
             for data in data_loader:
                 # print(data)
-                inputs, _ = data
+                inputs, label = data
                 outputs = self.forward4predict(inputs)
+                total_loss += loss_func(self.para_dict, outputs, torch.tensor(label).type(torch.long))
+                labels_test.append(label)
+                
                 if self.para_dict['GPU']:
                     all_outputs.append(outputs.cpu().detach().numpy())
                 else:
                     all_outputs.append(outputs.detach().numpy())
                 # labels_test.append(np.array(l))
 
-            return np.vstack(all_outputs)
+            return np.vstack(all_outputs), np.hstack(labels_test), total_loss
 
     def print_model_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
