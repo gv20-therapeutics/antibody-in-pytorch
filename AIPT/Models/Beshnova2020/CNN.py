@@ -31,19 +31,19 @@ class CNN(Model):
         if 'embedding_dim' not in para_dict:
             self.para_dict['embedding_dim'] = 15
         if 'dropout_rate' not in para_dict:
-            self.para_dict['dropout_rate'] = 0.5 # arbitrary
+            self.para_dict['dropout_rate'] = 0.4 # arbitrary
         if 'conv1_n_filters' not in para_dict:
             self.para_dict['conv1_n_filters'] = 8 # from paper
         if 'conv2_n_filters' not in para_dict:
             self.para_dict['conv2_n_filters'] = 16 # from paper
         if 'filter_size' not in para_dict:
-            self.para_dict['filter_size'] = 2 # from paper
+            self.para_dict['filter_size'] = (self.para_dict['embedding_dim'], 2) # from paper
         if 'max_pool_filter_size' not in para_dict:
-            self.para_dict['max_pool_filter_size'] = 2 # from paper
+            self.para_dict['max_pool_filter_size'] = (1,2) # from paper
         if 'fc_hidden_dim' not in para_dict:
             self.para_dict['fc_hidden_dim'] = 10 # from paper
         if 'stride' not in para_dict:
-            self.para_dict['stride'] = 2 # from paper
+            self.para_dict['stride'] = 1 # from paper
         if 'GPU' not in para_dict:
             self.para_dict['GPU'] = False
             
@@ -67,20 +67,20 @@ class CNN(Model):
         def get_width_after_conv(width, filter_size, stride):
             return (width - filter_size)//stride + 1
         start_width = self.para_dict['seq_len']
-        self.conv1 = nn.Conv1d(in_channels = self.para_dict['embedding_dim'], #todo: support gapped?
-                               out_channels = self.para_dict['conv1_n_filters'],
-                               kernel_size = self.para_dict['filter_size'],
-                               stride = 1, padding = 0) # todo fix strides
-        width = get_width_after_conv(start_width, self.para_dict['filter_size'], 1)
-        self.pool1 = nn.MaxPool1d(kernel_size = self.para_dict['max_pool_filter_size'], stride = self.para_dict['stride']) # todo: make 2 a param
-        width = get_width_after_conv(width, self.para_dict['filter_size'], 2)
-        self.conv2 = nn.Conv1d(in_channels = self.para_dict['conv1_n_filters'], out_channels = self.para_dict['conv2_n_filters'], kernel_size = self.para_dict['filter_size'], stride = 1, padding=0)
-        width = get_width_after_conv(width, self.para_dict['filter_size'], 1)
-        self.pool2 = nn.MaxPool1d(kernel_size = self.para_dict['max_pool_filter_size'], stride = self.para_dict['stride']) # todo: make 2 a param
-        width = get_width_after_conv(width, self.para_dict['filter_size'], 2)
-        self.fc1 = nn.Linear(in_features = width * self.para_dict['conv2_n_filters'], 
+        self.conv1 = nn.Conv2d(in_channels = 1, #todo: support gapped?
+                               out_channels = self.para_dict['conv1_n_filters'], kernel_size = self.para_dict['filter_size'], stride = 1, padding = 0) # todo fix strides
+        width = get_width_after_conv(start_width, self.para_dict['filter_size'][1], 1)
+        width = get_width_after_conv(start_width, self.para_dict['filter_size'][1], 1)
+        self.pool1 = nn.MaxPool2d(kernel_size = self.para_dict['max_pool_filter_size'], stride = self.para_dict['stride']) # todo: make 2 a param
+        width = get_width_after_conv(width, self.para_dict['max_pool_filter_size'][1], 2)
+        self.conv2 = nn.Conv2d(in_channels = self.para_dict['conv1_n_filters'], out_channels = self.para_dict['conv2_n_filters'], kernel_size = [1,2], stride = 1, padding=0)
+        width = get_width_after_conv(width, 2, 1)
+        self.pool2 = nn.MaxPool2d(kernel_size = self.para_dict['max_pool_filter_size'], stride = self.para_dict['stride']) # todo: make 2 a param
+        width = get_width_after_conv(width, self.para_dict['filter_size'][1], 2)
+        print('width', width)
+        self.fc1 = nn.Linear(in_features = 128, 
                              out_features = self.para_dict['fc_hidden_dim'])
-        self.fc2 = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2) #todo: parameterize
+        self.logits = nn.Linear(in_features = self.para_dict['fc_hidden_dim'], out_features = 2) #todo: parameterize
         self.dropout = nn.Dropout(p = self.para_dict['dropout_rate'])
         
         if self.para_dict['GPU']:
@@ -96,20 +96,36 @@ class CNN(Model):
         
         #X = torch.FloatTensor(Xs)
 #         X = X.permute(0,2,1)
+#         print('input', Xs.shape)
         out = self.embedding_fn(Xs)
+#         print('embed', out.shape)
         out = out.permute(0, 2, 1) # todo: why is this necessary?
-        
-        out = self.dropout(self.conv1(out))
+#         print('permute', out.shape)
+        out = out.unsqueeze(1) # todo: why is this necessary?
+#         print('reshape', out.shape)
+        out = self.conv1(out)
+#         print('conv1', out.shape)
         out = F.relu(out)
+#         print('relu1', out.shape)
         out = self.pool1(out)
+#         print('pool1', out.shape)
         
-        out = self.dropout(self.conv2(out))
+        out = self.conv2(out)
+#         print('conv2', out.shape)
         out = F.relu(out)
+#         print('relu2', out.shape)
         out = self.pool2(out)
+#         print('pool2', out.shape)
         
-        out = out.reshape(batch_size, -1)
+#         out = torch.flatten(out)
+#         print('reshape', out.shape)
+        out = torch.reshape(out, [batch_size, -1])
+#         print('reshape', out.shape)
         out = self.fc1(out)
-        out = self.fc2(out)
+        out = self.dropout(F.relu(out))
+#         print('fc1', out.shape)
+        out = self.logits(out)
+#         print('logits', out.shape)
 
         return out
 
