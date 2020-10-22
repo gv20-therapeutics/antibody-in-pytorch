@@ -171,6 +171,8 @@ class CNN(Model):
         #out = torch.sigmoid(self.fc2(out))
         out = self.fc2(out)
         
+        out = torch.nn.Softmax(out)
+        
         return out
 
     def get_gradient(self, Xs):
@@ -307,11 +309,10 @@ class CNN(Model):
         acc = accuracy_score(y_true, y_pred)
         mcc = matthews_corrcoef(y_true, y_pred)
 
-        print('Test: ')
         print(mat)
         print('Accuracy = %.3f ,MCC = %.3f' % (acc, mcc))
         return mat, acc, mcc
-
+    
     def predict(self, data_loader):
 
         self.eval()
