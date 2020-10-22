@@ -22,6 +22,4 @@ def embed_batch(aa_seq_batch):
     batch =  torch.stack(tuple(encoded_batch))
     return batch
 
-
-
-
+def embedding
