@@ -57,7 +57,7 @@ def plot_roc_curve(scores, labels, legend_label=None):
     roc = sns.lineplot(x=fpr, y=tpr, label=legend_label)
     return roc
 
-def plot_roc_curves(scores_list, labels_list, legend_labels_list, title=''):
+def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300):
     assert len(scores_list) == len(labels_list)
     assert len(scores_list) == len(legend_labels_list)
     for scores, labels, legend_label in zip(scores_list, labels_list, legend_labels_list):
@@ -67,5 +67,7 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title=''):
         'xlabel': 'FPR',
         'ylabel': 'TPR'
     })
+    if save_path is not None:
+        plt.savefig(save_path, dpi=dpi)
     plt.show()
     return roc

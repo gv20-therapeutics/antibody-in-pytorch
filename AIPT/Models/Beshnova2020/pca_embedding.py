@@ -17,11 +17,6 @@ def embed_seq(aa_seq):
     encodings =  np.vstack(encodings)
     return torch.Tensor(encodings)
 
-# def embed_batch(aa_seq_batch):
-#     encoded_batch = map(embed_seq, aa_seq_batch)
-#     batch =  torch.stack(tuple(encoded_batch))
-#     return batch
-
 def embedding_fn(num_embeddings, embedding_dim):
     torch_embedding_fn = torch.nn.Embedding(num_embeddings, embedding_dim)
     torch_embedding_fn.weight.data.copy_(torch.from_numpy(AA_PCA_FEATURES))
