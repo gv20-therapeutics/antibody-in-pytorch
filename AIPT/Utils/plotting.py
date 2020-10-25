@@ -5,7 +5,7 @@ import itertools
 import scipy
 import PIL.Image
 from torchvision.transforms import ToTensor
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, roc_auc_score
 import seaborn as sns
 
 COLOR_PALETTE = 'bright'
@@ -54,7 +54,8 @@ def plot_confusion_matrix(cm, class_names):
 
 def plot_roc_curve(scores, labels, legend_label=None):
     fpr, tpr, thresh = roc_curve(labels, scores)
-    roc = sns.lineplot(x=fpr, y=tpr, label=legend_label)
+    auroc = roc_auc_score(labels, scores)
+    roc = sns.lineplot(x=fpr, y=tpr, label=f'{legend_label} -- {round(auroc, 3)}', ci=None)
     return roc
 
 def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300):
