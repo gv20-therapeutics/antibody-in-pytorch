@@ -11,6 +11,7 @@ import seaborn as sns
 COLOR_PALETTE = 'bright'
 sns.set_palette(COLOR_PALETTE)
 
+
 def plot_to_image(figure):
     buf = io.BytesIO()
     plt.savefig(buf, format='jpeg')
@@ -19,6 +20,7 @@ def plot_to_image(figure):
     image = ToTensor()(image)
     plt.close(figure)
     return image
+
 
 def plot_confusion_matrix(cm, class_names):
     """
@@ -52,11 +54,13 @@ def plot_confusion_matrix(cm, class_names):
         plt.xlabel('Predicted label')
     return figure
 
+
 def plot_roc_curve(scores, labels, legend_label=None):
     fpr, tpr, thresh = roc_curve(labels, scores)
     auroc = roc_auc_score(labels, scores)
     roc = sns.lineplot(x=fpr, y=tpr, label=f'{legend_label} -- {round(auroc, 3)}', ci=None)
     return roc
+
 
 def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300):
     assert len(scores_list) == len(labels_list)
@@ -71,4 +75,36 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
     plt.show()
+    return roc
+
+
+def roc_from_models(models, data_loaders,evaluate=True, title='', save_path=None, dpi=300):
+    '''
+    Evaluates set of models on data_loaders and plots overlaid ROC curves.
+
+    Args:
+        models (dict of str: torch.nn.Module):
+            Dict mapping model names to Torch models. Each model must output 2 logits, the 2nd (index 1) of which
+            will be used as a classification score for ROC plotting. Furthermore, each model must implement `predict`
+            method which given a data_loader, returns tuple of (outputs, labels, loss). If `evaluate`, each model must
+            also implement `evaluate` method.
+
+        data_loaders (dict of str: torch.utils.data.DataLoader):
+            Dict of data_loaders to evaluate models on. Must have same keys as `models`. of same length as `models`.
+            `models[k]` is evaluated on `data_loaders[k]` for each key k.
+
+    Returns (seaborn.lineplot): Plot with one ROC curve for each model in `models`, evaluated on `data_loader`.
+    '''
+    roc_scores = []
+    roc_labels = []
+    roc_legend_labels = []
+    for model_name, model in models.items():
+        outputs, labels, loss = model.predict(data_loaders[model_name])
+        if evaluate:
+            model.evaluate(outputs, labels)
+        roc_scores.append(
+            outputs[:, 1])  # extract output column containing 2nd logit, which represents probability of the 1-class
+        roc_labels.append(labels)
+        roc_legend_labels.append(model_name)
+    roc = plot_roc_curves(roc_scores, roc_labels, roc_legend_labels, title=title, save_path=save_path, dpi=dpi)
     return roc

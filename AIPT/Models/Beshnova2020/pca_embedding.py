@@ -7,7 +7,8 @@ DEBUG_MODE = True
 if DEBUG_MODE:
     dev_utils.get_mod_time(__file__, verbose=True)
 
-AA_PCA_FEATURES = pd.read_csv('AAidx_PCA.txt', sep='\t').sort_index().to_numpy()
+pca_feature_path = 'AIPT/Models/Beshnova2020/AAidx_PCA.txt'
+AA_PCA_FEATURES = pd.read_csv(pca_feature_path, sep='\t').sort_index().to_numpy()
 
 def embed_seq(aa_seq):
     encodings = []

@@ -1,6 +1,6 @@
 import argparse
-import os
 import warnings
+import shutil
 import pandas as pd
 import numpy as np
 import torch
@@ -12,17 +12,39 @@ import AIPT.Utils.plotting
 import AIPT.Utils.Dev.dev_utils as dev_utils
 
 def main():
+    import os
     # parse arguments
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--seq_len', type=int, default=11)
     parser.add_argument('--embedding_dim', type=int, default=15)
     parser.add_argument('--learning_rate', type=float, default=10**-3)
+    parser.add_argument('--epoch', type=int, default=10**-3)
+    parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--run_name', type=str, default='default_run_name')
     parser.add_argument('--run_dir', type=str, default='default_run_dir')
     parser.add_argument('--work_path', type=str, default='/opt/ml/model')
     parser.add_argument('--data-dir', type=str, default=os.environ['SM_CHANNEL_DATA'])
-    para_dict = parser.parse_args()
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+
+    parser.add_argument('--index_file', type=str, default='OAS_index.txt')
+
+    # cnn architecture things
+    parser.add_argument('--dropout_rate', type=float, default=0.4)
+    parser.add_argument('--conv1_n_filters', type=int, default=8)
+    parser.add_argument('--conv2_n_filters', type=int, default=16)
+    parser.add_argument('--conv1_filter_dim1', type=int, default=2)
+    parser.add_argument('--conv2_filter_dim1', type=int, default=2)
+    parser.add_argument('--max_pool_filter_dim1', type=int, default=2)
+    parser.add_argument('--fc_hidden_dim', type=int, default=10)
+    # parser.add_argument('--stride', type=int, default=1)
+    # parser.add_argument('--padding', type=int, default=0)
+
+
+    para_dict = vars(parser.parse_args())
+    para_dict['conv1_filter_size'] = (para_dict['embedding_dim'], para_dict['conv1_filter_dim1'])
+    para_dict['conv2_filter_size'] = (1, para_dict['conv2_filter_dim1'])
+    para_dict['max_pool_filter_size'] = (1, para_dict['max_pool_filter_dim1'])
 
     # aipt_path = '/home/ec2-user/SageMaker/antibody-in-pytorch/'
     aipt_path = './'
@@ -32,14 +54,20 @@ def main():
     set up paths
     '''
 
+    # saved_path = 'AIPT/Models/Beshnova2020/work/pca_balanced_20/model/Epoch_5'
+    # dest = os.path.join(para_dict['work_path'], 'pca_20/model')
+    # os.makedirs(dest, exist_ok=True)
+    # shutil.copy(saved_path, dest)
+    # os.listdir(dest)
+
     # aipt_dir = '/home/ec2-user/SageMaker/antibody-in-pytorch/AIPT'  # replace with your own aipt path
     aipt_dir = aipt_path
 
     # seq_dir = os.path.join(aipt_dir, "Benchmarks/OAS_dataset/data/seq_db")
-    seq_dir = para_dict.data_dir
+    seq_dir = para_dict["data_dir"]
     model_dir = 'AIPT/Models/Beshnova2020'
     model_dir_abs = os.path.join(aipt_path, model_dir)
-    index_fn = "OAS_index.txt"
+    index_fn = para_dict['index_file']
     index_path = os.path.join(aipt_path, model_dir, index_fn)
     cell_types = [
         "Naive-B-Cells",
@@ -51,17 +79,24 @@ def main():
 
     file_names = index_df['file_name']
 
+    def df_len_fn(row):
+        try:
+            return len(row['CDR3_aa'])
+        except:
+            return -1
+
     data_dfs = []
     for index, row in index_df.iterrows():
         file_name = row['file_name']
         df = pd.read_csv(os.path.join(seq_dir, f'{file_name}.txt'), sep='\t')
-        length_df = df.apply(lambda row: len(row['CDR3_aa']), axis=1)
-        data_df = df[length_df == 12]
+        length_df = df.apply(df_len_fn, axis=1)
+        data_df = df[length_df == para_dict['seq_len']]
         data_df['BType'] = row['BType']
         data_df = data_df[['CDR3_aa', 'BType']]
         data_dfs.append(data_df)
 
     data = pd.concat(data_dfs)
+    print(data)
 
     from AIPT.Benchmarks.OAS_dataset import OAS_data_loader
     from sklearn.model_selection import train_test_split
@@ -97,9 +132,16 @@ def main():
 
     data['label'] = data.apply(lambda row: cell_types.index(row['BType']), axis=1)
     train_data, test_data = train_test_split(data, train_size=0.8)
-    train_loader = get_balanced_data_loader(train_data)
-    # train_loader = get_data_loader(train_data)
-    test_loader = get_data_loader(test_data)
+    train_loader = get_balanced_data_loader(train_data, batch_size=para_dict['batch_size'])
+    # train_loader = get_data_loader(train_data, batch_size=para_dict['batch_size'])
+    test_loader = get_data_loader(test_data, batch_size=para_dict['batch_size'])
+
+    for x,y in train_loader:
+        print(x)
+        print(y)
+        break
+
+    print('dataset size', len(train_loader))
 
 
     # aipt_reload(AIPT.Models.Beshnova2020.CNN)
@@ -137,17 +179,21 @@ def main():
     run_dir = para_dict['run_dir']
     pca_para_dict = para_dict.copy()
     pca_para_dict['model_name'] = 'pca'
+    pca_para_dict['model_path'] = os.path.join(para_dict['work_path'], pca_para_dict['model_name'])
     pca_dir = os.path.join(run_dir, 'pca')
     pca_para_dict['log_dir'] = os.path.join(pca_dir, 'logs')
     pca_embedding_fn = pca_embedding.embedding_fn(20, pca_para_dict['embedding_dim'])
+
     pca_model = CNN(pca_para_dict, pca_embedding_fn)
 
     general_para_dict = para_dict.copy()
     general_para_dict['model_name'] = 'general'
+    general_para_dict['model_path'] = os.path.join(para_dict['work_path'], general_para_dict['model_name'])
     general_dir = os.path.join(run_dir, 'general')
-    pca_para_dict['log_dir'] = os.path.join(general_dir, 'logs')
+    general_para_dict['log_dir'] = os.path.join(general_dir, 'logs')
     general_para_dict['log_dir'] = os.path.join(general_para_dict['log_dir'], 'general')
     general_embedding_fn = nn.Embedding(20, general_para_dict['embedding_dim'])
+
     general_model = CNN(general_para_dict, general_embedding_fn)
 
     ## Train
@@ -155,7 +201,8 @@ def main():
     pca_model.fit(train_loader, test_loader=test_loader)
     general_model.fit(train_loader, test_loader=test_loader)
 
-    figure_dir = os.path.join(para_dict['log_dir'],'figures')
+    figure_dir = os.path.join(para_dict['output_data_dir'], 'figures')
+    os.makedirs(figure_dir)
     figure_path = os.path.join(figure_dir, 'memory_naive_roc_train.png')
 
     pca_output, pca_labels, pca_loss = pca_model.predict(train_loader)
