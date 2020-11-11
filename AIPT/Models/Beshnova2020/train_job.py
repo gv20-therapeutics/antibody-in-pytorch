@@ -1,18 +1,15 @@
-import argparse
-import warnings
-import shutil
-import pandas as pd
-import numpy as np
-import torch
-import torch.nn as nn
-warnings.filterwarnings("ignore")
-import AIPT.Models.Beshnova2020.CNN
-import AIPT.Utils.logging
-import AIPT.Utils.plotting
-import AIPT.Utils.Dev.dev_utils as dev_utils
 
 def main():
     import os
+    import argparse
+    import warnings
+
+    warnings.filterwarnings("ignore")
+    import pandas as pd
+    from AIPT.Models.Beshnova2020.CNN import CNN
+    from AIPT.Utils.plotting import roc_from_models
+    from AIPT.Models.Beshnova2020.data import load_data, get_train_test_loaders
+
     # parse arguments
     parser = argparse.ArgumentParser()
 
@@ -56,115 +53,19 @@ def main():
         "Memory-B-Cells",
     ]
     para_dict['classes'] = cell_types
-
     index_df = pd.read_csv(index_path, sep="\t")
-
-    def df_len_fn(row):
-        try:
-            return len(row['CDR3_aa'])
-        except:
-            return -1
-
-    data_dfs = []
-    for index, row in index_df.iterrows():
-        file_name = row['file_name']
-        df = pd.read_csv(os.path.join(seq_dir, f'{file_name}.txt'), sep='\t')
-        length_df = df.apply(df_len_fn, axis=1)
-        data_df = df[length_df == para_dict['seq_len']]
-        data_df['BType'] = row['BType']
-        data_df = data_df[['CDR3_aa', 'BType']]
-        data_dfs.append(data_df)
-
-    data = pd.concat(data_dfs)
-    print(data)
-
-    from AIPT.Benchmarks.OAS_dataset import OAS_data_loader
-    from sklearn.model_selection import train_test_split
-    from torch.utils.data import DataLoader, WeightedRandomSampler
-
-    np.random.seed(0)
-    torch.manual_seed(0)
-
-    def get_balanced_data_loader(data, batch_size=32):
-        # useful example: https://discuss.pytorch.org/t/some-problems-with-weightedrandomsampler/23242/20
-        # Compute samples weight (each sample should get its own weight)
-        label = torch.Tensor(data['label'].values).type(torch.int8)
-        class_sample_count = torch.tensor(
-            [(label == t).sum() for t in torch.unique(label, sorted=True)])
-        weight = 1. / class_sample_count.float()
-        samples_weight = torch.tensor([weight[t] for t in label])
-
-        # Create sampler, dataset, loader
-        sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
-        seq_encodings = OAS_data_loader.encode_index(data=data['CDR3_aa'])
-        #     dataset = TensorDataset(torch.Tensor(seq_encodings), label)
-        btypes = data['label'].values
-        dataset = list(zip(seq_encodings, btypes))
-        loader = DataLoader(
-            dataset, batch_size=batch_size, sampler=sampler, drop_last=True)
-        return loader
-
-    def get_data_loader(data, batch_size=32):
-        seq_encodings = OAS_data_loader.encode_index(data=data['CDR3_aa'])
-        btypes = data['label'].values
-        loader = DataLoader(list(zip(seq_encodings, btypes)), shuffle=True, batch_size=batch_size, drop_last=True)
-        return loader
-
-    data['label'] = data.apply(lambda row: cell_types.index(row['BType']), axis=1)
-    train_data, test_data = train_test_split(data, train_size=0.8)
-    train_loader = get_balanced_data_loader(train_data, batch_size=para_dict['batch_size'])
-    # train_loader = get_data_loader(train_data, batch_size=para_dict['batch_size'])
-    test_loader = get_data_loader(test_data, batch_size=para_dict['batch_size'])
-
-    for x,y in train_loader:
-        print(x)
-        print(y)
-        break
-
-    print('dataset size', len(train_loader))
-
-
-    # aipt_reload(AIPT.Models.Beshnova2020.CNN)
-    # aipt_reload(AIPT.Utils.logging)
-    # aipt_reload(AIPT.Utils.plotting)
-    from AIPT.Models.Beshnova2020.CNN import CNN
-    import AIPT.Models.Beshnova2020.pca_embedding as pca_embedding
-    from AIPT.Utils.logging import today, current_time
-    from AIPT.Utils.plotting import plot_roc_curves
-    import os
-
-
-    # print('LOG DIR:', para_dict['log_dir'])
-
-    ## Tensorboard
-
-    import subprocess as sp
-
-    start_tensorboard = False
-
-    if start_tensorboard:
-        reload_interval = "15"  # seconds
-        tensorboard_proc = sp.Popen(
-            [
-                "tensorboard",
-                "--logdir",
-                para_dict["log_dir"],
-            ],
-            universal_newlines=True,
-            stdout=sp.PIPE,
-            stderr=sp.PIPE,
-        )
+    data = load_data(index_df, seq_dir, cell_types, seq_len=para_dict['seq_len'])
+    train_loader, test_loader = get_train_test_loaders(data)
 
     ## models
+
     run_dir = para_dict['run_dir']
     pca_para_dict = para_dict.copy()
     pca_para_dict['model_name'] = 'pca'
     pca_para_dict['model_path'] = os.path.join(para_dict['work_path'], pca_para_dict['model_name'])
     pca_dir = os.path.join(run_dir, 'pca')
     pca_para_dict['log_dir'] = os.path.join(pca_dir, 'logs')
-    pca_embedding_fn = pca_embedding.embedding_fn(20, pca_para_dict['embedding_dim'])
-
-    pca_model = CNN(pca_para_dict, pca_embedding_fn)
+    pca_model = CNN.pca_model(pca_para_dict)
 
     general_para_dict = para_dict.copy()
     general_para_dict['model_name'] = 'general'
@@ -172,41 +73,37 @@ def main():
     general_dir = os.path.join(run_dir, 'general')
     general_para_dict['log_dir'] = os.path.join(general_dir, 'logs')
     general_para_dict['log_dir'] = os.path.join(general_para_dict['log_dir'], 'general')
-    general_embedding_fn = nn.Embedding(20, general_para_dict['embedding_dim'])
-
-    general_model = CNN(general_para_dict, general_embedding_fn)
+    general_model = CNN.general_model(general_para_dict)
 
     ## Train
 
     pca_model.fit(train_loader, test_loader=test_loader)
     general_model.fit(train_loader, test_loader=test_loader)
 
+    # Evaluate
+
+    def model_evaluation(data_loader, data_name, figure_dir, figure_basename, title_basename):
+        figure_path = os.path.join(figure_dir, f'{figure_basename}_{data_name}.png')
+        roc_from_models(
+            {
+                pca_model.name.upper(): pca_model,
+                general_model.name.capitalize(): general_model,
+            },
+            {
+                pca_model.name.upper(): data_loader,
+                general_model.name.capitalize(): data_loader,
+            },
+            title=f"{title_basename} ({data_name.capitalize()})",
+            save_path=figure_path,
+            show=False
+        )
+
     figure_dir = os.path.join(para_dict['output_data_dir'], 'figures')
     os.makedirs(figure_dir)
-    figure_path = os.path.join(figure_dir, 'memory_naive_roc_train.png')
+    figure_basename = 'memory_naive_roc'
+    title_basename = 'Memory vs. Naive B-Cell Classification'
 
-    pca_output, pca_labels, pca_loss = pca_model.predict(train_loader)
-    pca_model.evaluate(pca_output, pca_labels)
-    general_output, general_labels, general_loss = general_model.predict(train_loader)
-    general_model.evaluate(general_output, general_labels)
-    plot_roc_curves(
-        [pca_output[:, 1], general_output[:, 1]],
-        [pca_labels, general_labels],
-        ["PCA Embedding", "General Embedding"],
-        title="Memory vs. Naive B-cell Classification (Train)",
-        save_path=figure_path
-    )
+    model_evaluation(train_loader, 'train', figure_dir, figure_basename, title_basename)
+    print('\n')
+    model_evaluation(test_loader, 'test', figure_dir, figure_basename, title_basename)
 
-    figure_path = os.path.join(figure_dir, 'memory_naive_roc_test.png')
-
-    general_output, general_labels, general_loss = general_model.predict(test_loader)
-    general_model.evaluate(general_output, general_labels)
-    pca_output, pca_labels, pca_loss = pca_model.predict(test_loader)
-    pca_model.evaluate(pca_output, pca_labels)
-    plot_roc_curves(
-        [pca_output[:, 1], general_output[:, 1]],
-        [pca_labels, general_labels],
-        ["PCA Embedding", "General Embedding"],
-        title="Memory vs. Naive B-cell Classification (Test)",
-        save_path=figure_path
-    )

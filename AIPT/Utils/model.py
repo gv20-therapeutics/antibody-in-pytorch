@@ -49,6 +49,8 @@ class Model(nn.Module):
         if 'model_path' not in para_dict:
             self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
                 self.para_dict['batch_size']))
+        else:
+            self.model_path = self.para_dict['model_path']
         self.save_path = os.path.join(self.model_path, 'model')
 
         if not os.path.exists(self.work_path):

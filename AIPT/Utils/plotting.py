@@ -84,7 +84,7 @@ def plot_roc_curve(scores, labels, legend_label=None):
     return roc
 
 
-def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300):
+def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300, show=True):
     '''
     Plots overlaid ROC curves defined by parallel lists of scores and labels.
 
@@ -102,12 +102,11 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save
         title (str): Plot title.
         save_path (str): Plot save path.
         dpi (int): Plot DPI.
-
-    Returns (sns.lineplot): Plot containing overlaid ROC curves.
-
+        show (bool): If True, display the plot.
     '''
     assert len(scores_list) == len(labels_list)
     assert len(scores_list) == len(legend_labels_list)
+
     for scores, labels, legend_label in zip(scores_list, labels_list, legend_labels_list):
         roc = plot_roc_curve(scores, labels, legend_label=legend_label)
     roc.set(**{
@@ -118,11 +117,12 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
         print(f'Saved to: {save_path}')
-    plt.show()
-    return roc
+    if show:
+        plt.show()
+    plt.clf()
 
 
-def roc_from_models(models, data_loaders, title='', save_path=None, dpi=300, print_metrics=True):
+def roc_from_models(models, data_loaders, title='', save_path=None, dpi=300, show=True, print_metrics=True):
     '''
     Evaluates set of models on data_loaders and plots overlaid ROC curves.
 
@@ -136,11 +136,9 @@ def roc_from_models(models, data_loaders, title='', save_path=None, dpi=300, pri
             Dict of data_loaders to evaluate models on. Must have same keys as `models`. of same length as `models`.
             `models[k]` is evaluated on `data_loaders[k]` for each key k.
 
-        title, save_path, dpi: arguments passed to `plot_roc_curves`
+        title, save_path, dpi, show: arguments passed to `plot_roc_curves`
 
         print_metrics (bool): If True, compute and print loss, confusion matrix, accuracy, and MCC.
-
-    Returns (seaborn.lineplot): Plot with one ROC curve for each model in `models`, evaluated on `data_loader`.
     '''
     roc_scores = []
     roc_labels = []
@@ -153,5 +151,4 @@ def roc_from_models(models, data_loaders, title='', save_path=None, dpi=300, pri
             outputs[:, 1])  # extract output column containing 2nd logit, which represents probability of the 1-class
         roc_labels.append(labels)
         roc_legend_labels.append(model_name)
-    roc = plot_roc_curves(roc_scores, roc_labels, roc_legend_labels, title=title, save_path=save_path, dpi=dpi)
-    return roc
+    roc = plot_roc_curves(roc_scores, roc_labels, roc_legend_labels, title=title, save_path=save_path, dpi=dpi, show=show)
