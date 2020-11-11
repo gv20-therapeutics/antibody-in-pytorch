@@ -11,9 +11,9 @@ The authors have generously made Python scripts and data available on GitHub [ht
 ### Model structure
 ![avatar](figures/architecture.png)
 
-| Model name | Input | Output | Loss Function | Model structure |
-| ---------- | ----- | ------ | ------------- | --------------- |
-| DeepCAT | Amino acid sequence of fixed length in range 12-16. | Binary classification logits | Cross Entropy | PCA embedding + 2 * Conv + (FC + Relu) + output | 
+| Model name | Input | Output | Loss Function |
+| ---------- | ----- | ------ | ------------- |
+| DeepCAT | Amino acid sequence of fixed length in range 12-16. | Logits for binary classification | Cross Entropy |
 
 
 ### Reference
