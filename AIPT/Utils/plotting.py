@@ -1,18 +1,26 @@
 import io
+import itertools
+import PIL.Image
 import matplotlib.pyplot as plt
 import numpy as np
-import itertools
-import scipy
-import PIL.Image
-from torchvision.transforms import ToTensor
-from sklearn.metrics import roc_curve, roc_auc_score
 import seaborn as sns
+from sklearn.metrics import roc_curve, roc_auc_score
+from torchvision.transforms import ToTensor
+from AIPT.Utils.metrics import binary_classification_metrics
 
 COLOR_PALETTE = 'bright'
 sns.set_palette(COLOR_PALETTE)
 
 
 def plot_to_image(figure):
+    '''
+    Converts matplotlib figure to PyTorch image tensor suitable for logging in TensorBoard.
+
+    Args:
+        figure (matplotlib.pyplot.figure): Matplotlib figure to convert to tensor.
+
+    Returns (torch.Tensor): Tensor containing image pixels.
+    '''
     buf = io.BytesIO()
     plt.savefig(buf, format='jpeg')
     buf.seek(0)
@@ -27,10 +35,13 @@ def plot_confusion_matrix(cm, class_names):
     Returns a matplotlib figure containing the plotted confusion matrix.
 
     Args:
-    cm (array, shape = [n, n]): a confusion matrix of integer classes
-    class_names (array, shape = [n]): String names of the integer classes
+        cm (array, shape=[n, n]): a confusion matrix of integer classes
+        class_names (array, shape=[n]): String names of the integer classes
 
-    source: https://www.tensorflow.org/tensorboard/image_summaries
+    Source: https://www.tensorflow.org/tensorboard/image_summaries
+
+    Returns (matplotlib.pyplot.figure): Heatmap-style confusion matrix.
+
     """
     figure = plt.figure(figsize=(8, 8))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
@@ -56,6 +67,17 @@ def plot_confusion_matrix(cm, class_names):
 
 
 def plot_roc_curve(scores, labels, legend_label=None):
+    '''
+    Plots ROC curve (overlays onto current plot).
+
+    Args:
+        scores (list of float): List of scores.
+        labels (list of int in {0,1}): List of class labels, parallel to `scores`.
+        legend_label: Name of series defined by `scores` and `labels`.
+
+    Returns: ROC defined by `scores` and `labels`, with legend labeled with `legend_label` and AUROC.
+
+    '''
     fpr, tpr, thresh = roc_curve(labels, scores)
     auroc = roc_auc_score(labels, scores)
     roc = sns.lineplot(x=fpr, y=tpr, label=f'{legend_label} -- {round(auroc, 3)}', ci=None)
@@ -63,6 +85,27 @@ def plot_roc_curve(scores, labels, legend_label=None):
 
 
 def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save_path=None, dpi=300):
+    '''
+    Plots overlaid ROC curves defined by parallel lists of scores and labels.
+
+    Args:
+        scores_list (list of list of float):
+            Each inner list in `scores_list` is a list of scores that together with a corresponding label list
+            defines an ROC curve.
+
+        labels_list (list of list of int in {0,1}):
+            `labels_list[i]` contains class labels corresponding to `scores_list[i]`.
+
+        legend_labels_list (list of str):
+            `legend_labels_list[i]` contains the name of the series defined by `scores_list[i]` and `labels_list[i]`.
+
+        title (str): Plot title.
+        save_path (str): Plot save path.
+        dpi (int): Plot DPI.
+
+    Returns (sns.lineplot): Plot containing overlaid ROC curves.
+
+    '''
     assert len(scores_list) == len(labels_list)
     assert len(scores_list) == len(legend_labels_list)
     for scores, labels, legend_label in zip(scores_list, labels_list, legend_labels_list):
@@ -78,7 +121,7 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save
     return roc
 
 
-def roc_from_models(models, data_loaders,evaluate=True, title='', save_path=None, dpi=300):
+def roc_from_models(models, data_loaders, print_metrics=True, title='', save_path=None, dpi=300):
     '''
     Evaluates set of models on data_loaders and plots overlaid ROC curves.
 
@@ -86,12 +129,15 @@ def roc_from_models(models, data_loaders,evaluate=True, title='', save_path=None
         models (dict of str: torch.nn.Module):
             Dict mapping model names to Torch models. Each model must output 2 logits, the 2nd (index 1) of which
             will be used as a classification score for ROC plotting. Furthermore, each model must implement `predict`
-            method which given a data_loader, returns tuple of (outputs, labels, loss). If `evaluate`, each model must
-            also implement `evaluate` method.
+            method which given a data_loader, returns tuple of (outputs, labels, loss).
 
         data_loaders (dict of str: torch.utils.data.DataLoader):
             Dict of data_loaders to evaluate models on. Must have same keys as `models`. of same length as `models`.
             `models[k]` is evaluated on `data_loaders[k]` for each key k.
+
+        print_metrics (bool): If True, compute and print confusion matrix, accuracy, and MCC.
+
+        title, save_path, dpi: arguments passed to `plot_roc_curves`
 
     Returns (seaborn.lineplot): Plot with one ROC curve for each model in `models`, evaluated on `data_loader`.
     '''
@@ -100,8 +146,8 @@ def roc_from_models(models, data_loaders,evaluate=True, title='', save_path=None
     roc_legend_labels = []
     for model_name, model in models.items():
         outputs, labels, loss = model.predict(data_loaders[model_name])
-        if evaluate:
-            model.evaluate(outputs, labels)
+        if print_metrics:
+            binary_classification_metrics(outputs, labels)
         roc_scores.append(
             outputs[:, 1])  # extract output column containing 2nd logit, which represents probability of the 1-class
         roc_labels.append(labels)
