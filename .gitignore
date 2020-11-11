@@ -6,3 +6,4 @@ dist/
 work/
 .idea/
 .ipynb_checkpoints/
+.virtual_documents/

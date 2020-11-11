@@ -118,7 +118,6 @@ class LSTM_Bi(Model):
         return out
 
     def hidden_vlen(self, Xs):
-        print('original', Xs)
         batch_size = len(Xs)
         _aa2id = aa2id_i[self.para_dict['gapped']]
 
@@ -141,7 +140,6 @@ class LSTM_Bi(Model):
         # embedding
         Xs_f = self.word_embeddings(Xs_f.type(dtype=torch.LongTensor))
         Xs_b = self.word_embeddings(Xs_b.type(dtype=torch.LongTensor))
-        print('embedding', Xs_f)
 
         # packing the padded sequences
         Xs_f = pack_padded_sequence(Xs_f, self.Xs_len, batch_first=True, enforce_sorted=False)

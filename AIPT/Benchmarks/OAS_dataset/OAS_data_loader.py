@@ -156,7 +156,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     """
     Create the train and test df
     return: Train and test loader
-    todo: default should not be wollacott2019
+    todo: default should probably not be Wollacott2019 (probably should be None and do the non-Wollacott behavior)
     """
 
     index_df = pd.read_csv(index_file, sep='\t')

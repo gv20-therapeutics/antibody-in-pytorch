@@ -46,8 +46,11 @@ class Model(nn.Module):
             self.para_dict['optim_name'] = 'Adam'
 
         self.work_path = para_dict['work_path']
-        self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
-            self.para_dict['batch_size']))
+        if 'model_path' not in para_dict:
+            self.model_path = os.path.join(self.work_path, self.para_dict['model_name'] + '_' + str(
+                self.para_dict['batch_size']))
+        else:
+            self.model_path = self.para_dict['model_path']
         self.save_path = os.path.join(self.model_path, 'model')
 
         if not os.path.exists(self.work_path):
