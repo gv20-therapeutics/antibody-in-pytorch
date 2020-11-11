@@ -1,4 +1,4 @@
-*These files have been copied from the DeepCAT repository: [https://github.com/s175573/DeepCAT/tree/master/TrainingData].  The authors' original comments follow.*
+*These files have been copied from the [DeepCAT repository](https://github.com/s175573/DeepCAT/tree/master/TrainingData).  The authors' original comments follow.*
 
 
 The training data contains 4 files:
