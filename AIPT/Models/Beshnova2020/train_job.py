@@ -29,7 +29,7 @@ def main():
 
     parser.add_argument('--index_file', type=str, default='OAS_index.txt')
 
-    # cnn architecture things
+    # architecture spec
     parser.add_argument('--dropout_rate', type=float, default=0.4)
     parser.add_argument('--conv1_n_filters', type=int, default=8)
     parser.add_argument('--conv2_n_filters', type=int, default=16)
@@ -42,42 +42,22 @@ def main():
 
 
     para_dict = vars(parser.parse_args())
-    para_dict['conv1_filter_size'] = (para_dict['embedding_dim'], para_dict['conv1_filter_dim1'])
-    para_dict['conv2_filter_size'] = (1, para_dict['conv2_filter_dim1'])
-    para_dict['max_pool_filter_size'] = (1, para_dict['max_pool_filter_dim1'])
 
     # aipt_path = '/home/ec2-user/SageMaker/antibody-in-pytorch/'
     aipt_path = './'
-    aipt_reload = dev_utils.get_aipt_reload_fn(aipt_path)
 
-    '''
-    set up paths
-    '''
 
-    # saved_path = 'AIPT/Models/Beshnova2020/work/pca_balanced_20/model/Epoch_5'
-    # dest = os.path.join(para_dict['work_path'], 'pca_20/model')
-    # os.makedirs(dest, exist_ok=True)
-    # shutil.copy(saved_path, dest)
-    # os.listdir(dest)
-
-    # aipt_dir = '/home/ec2-user/SageMaker/antibody-in-pytorch/AIPT'  # replace with your own aipt path
-    aipt_dir = aipt_path
-
-    # seq_dir = os.path.join(aipt_dir, "Benchmarks/OAS_dataset/data/seq_db")
     seq_dir = para_dict["data_dir"]
     model_dir = 'AIPT/Models/Beshnova2020'
-    model_dir_abs = os.path.join(aipt_path, model_dir)
     index_fn = para_dict['index_file']
     index_path = os.path.join(aipt_path, model_dir, index_fn)
     cell_types = [
         "Naive-B-Cells",
         "Memory-B-Cells",
-    ]  # todo: this is confusing - doesn't refer to "Species"
+    ]
     para_dict['classes'] = cell_types
 
     index_df = pd.read_csv(index_path, sep="\t")
-
-    file_names = index_df['file_name']
 
     def df_len_fn(row):
         try:

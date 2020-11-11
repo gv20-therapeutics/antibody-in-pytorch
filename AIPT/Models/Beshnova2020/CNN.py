@@ -1,4 +1,3 @@
-import json
 import math
 import os
 
@@ -8,11 +7,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from AIPT.Utils import loader
 from AIPT.Utils.metrics import binary_classification_metrics
 from AIPT.Utils.model import Model
 from AIPT.Utils.plotting import plot_confusion_matrix, plot_to_image
+from AIPT.Models.Beshnova2020 import pca_embedding
 from torch.utils.tensorboard import SummaryWriter
+from AIPT.Benchmarks.OAS_dataset.OAS_data_loader import AA_LS
 
 DEBUG_MODE = True
 if DEBUG_MODE:
@@ -21,6 +21,23 @@ if DEBUG_MODE:
 
 
 class CNN(Model):
+
+    @staticmethod
+    def pca_model(para_dict):
+        '''
+        Returns: CNN using PCA embedding.
+        '''
+        return CNN(para_dict.copy(), pca_embedding.embedding_fn())
+
+
+    @staticmethod
+    def general_model(para_dict):
+        '''
+        Returns: CNN using general (trainable) embedding.
+        '''
+        return CNN(para_dict.copy(), nn.Embedding(len(AA_LS), para_dict['embedding_dim']))
+
+
     def __init__(self, para_dict, embedding_fn, *args, **kwargs):
         '''
         Initialize CNN parameters.
@@ -31,24 +48,28 @@ class CNN(Model):
             embedding_fn (torch.nn.Embedding): takes AA sequence (str) aa_seq and outputs embedding of dimension
             para_dict[embedding_dim]
         '''
+        super(CNN, self).__init__(para_dict, *args, **kwargs)
 
-        super(CNN, self).__init__(para_dict, *args, **kwargs)  # todo: what's the point of this line?
-
+        self.name = para_dict['model_name']
         self.embedding_fn = embedding_fn
         self.para_dict.setdefault('batch_size', 100)
         self.num_classes = len(self.para_dict['classes'])
 
-        # architecture spec
+        # architecture spec, defaults are the settings in Beshnova2020
         self.para_dict.setdefault('embedding_dim', 15)
         self.para_dict.setdefault('dropout_rate', 0.4)
         self.para_dict.setdefault('conv1_n_filters', 8)
         self.para_dict.setdefault('conv2_n_filters', 16)
-        self.para_dict.setdefault('conv1_filter_size', (self.para_dict['embedding_dim'], 2))
-        self.para_dict.setdefault('conv2_filter_size', (1, 2))
-        self.para_dict.setdefault('max_pool_filter_size', (1, 2))
+        self.para_dict.setdefault('conv1_filter_dim1', 2)
+        self.para_dict.setdefault('conv2_filter_dim1', 2)
+        self.para_dict.setdefault('max_pool_filter_dim1', 2)
         self.para_dict.setdefault('fc_hidden_dim', 10)
         self.para_dict.setdefault('stride', 1)
         self.para_dict.setdefault('padding', 0)
+
+        self.para_dict['conv1_filter_size'] = (para_dict['embedding_dim'], para_dict['conv1_filter_dim1'])
+        self.para_dict['conv2_filter_size'] = (1, para_dict['conv2_filter_dim1'])
+        self.para_dict['max_pool_filter_size'] = (1, para_dict['max_pool_filter_dim1'])
 
         # logging
         self.para_dict.setdefault('run_name', aipt_logging.today())
@@ -259,10 +280,10 @@ class CNN(Model):
                 if epoch == 0 or epoch != saved_epoch:
                     self.save_model(f'Epoch_{epoch}', self.state_dict())  # todo: consider saving only best model
 
-                train_metrics = self.evaluate(train_loader, data_name='Train', log_epoch=epoch)
+                train_metrics, _, _ = self.evaluate(train_loader, data_name='Train', log_epoch=epoch)
 
                 if test_loader is not None:
-                    test_metrics = self.evaluate(test_loader, data_name='Test', log_epoch=epoch)
+                    test_metrics, _, _ = self.evaluate(test_loader, data_name='Test', log_epoch=epoch)
                     if test_metrics['mcc'] > best_test_mcc:  # save best model
                         best_test_mcc, best_epoch = test_metrics['mcc'], epoch
                         self.save_model(f'best_epoch_{epoch}', self.state_dict())
@@ -286,7 +307,7 @@ class CNN(Model):
         return out_metrics
 
 
-    def evaluate(self, data_loader, data_name='', log_epoch=None):
+    def evaluate(self, data_loader, data_name='', log_epoch=None, verbose=True):
         '''
         Evaluates model on `data_loader` and optionally logs metrics to TensorBoard.
 
@@ -295,7 +316,8 @@ class CNN(Model):
             data_name (str): Label to give data loader, ex. 'Train' or 'Test'.
             log_epoch (None or int): If int given, log to TensorBoard under epoch `log_epoch`.
 
-        Returns (dict str: various types): Dict containing evaluation metrics.
+        Returns (tuple of (dict str: various types, np.array, np.array)):
+            Tuple of (metric dict, network outputs on data_loader, true labels).
 
         '''
         outputs, labels, loss = self.predict(data_loader)
@@ -303,20 +325,25 @@ class CNN(Model):
             print(f'{data_name.upper()}:')
         num_examples = len(data_loader) * self.para_dict['batch_size']  # exact since we drop last batch if incomplete
         avg_loss = loss / num_examples
-        print(f'Total Loss=%.2f' % (loss), f'Average Loss=%.2e' % (avg_loss))
+
+        if verbose:
+            print(f'Total Loss=%.2f' % (loss), f'Average Loss=%.2e' % (avg_loss))
 
         if log_epoch is not None:
             self.writer.add_scalar(f'Total Loss/{data_name}', loss, log_epoch)  # works with `data_name` = ''
             self.writer.add_scalar(f'Average Loss/{data_name}', avg_loss, log_epoch)  # works with `data_name` = ''
 
-        cm, acc, mcc = self.metrics(outputs, labels, data_name='', log_epoch=log_epoch)
+        cm, acc, mcc = self.metrics(outputs, labels, data_name='', log_epoch=log_epoch, verbose=verbose)
         metrics = {'loss': loss,
                    'cm': cm,  # todo: consider factoring these keys out into constants
                    'acc': acc,
                    'mcc': mcc
                    }
-        print(30 * '-')
-        return metrics
+
+        if verbose:
+            print(30 * '-')
+
+        return metrics, outputs, labels
 
 
     def metrics(self, outputs, labels, data_name='', log_epoch=None, verbose=True):

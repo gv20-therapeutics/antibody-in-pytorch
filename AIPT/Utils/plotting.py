@@ -117,11 +117,12 @@ def plot_roc_curves(scores_list, labels_list, legend_labels_list, title='', save
     })
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
+        print(f'Saved to: {save_path}')
     plt.show()
     return roc
 
 
-def roc_from_models(models, data_loaders, print_metrics=True, title='', save_path=None, dpi=300):
+def roc_from_models(models, data_loaders, title='', save_path=None, dpi=300, print_metrics=True):
     '''
     Evaluates set of models on data_loaders and plots overlaid ROC curves.
 
@@ -135,9 +136,9 @@ def roc_from_models(models, data_loaders, print_metrics=True, title='', save_pat
             Dict of data_loaders to evaluate models on. Must have same keys as `models`. of same length as `models`.
             `models[k]` is evaluated on `data_loaders[k]` for each key k.
 
-        print_metrics (bool): If True, compute and print confusion matrix, accuracy, and MCC.
-
         title, save_path, dpi: arguments passed to `plot_roc_curves`
+
+        print_metrics (bool): If True, compute and print loss, confusion matrix, accuracy, and MCC.
 
     Returns (seaborn.lineplot): Plot with one ROC curve for each model in `models`, evaluated on `data_loader`.
     '''
@@ -145,9 +146,9 @@ def roc_from_models(models, data_loaders, print_metrics=True, title='', save_pat
     roc_labels = []
     roc_legend_labels = []
     for model_name, model in models.items():
-        outputs, labels, loss = model.predict(data_loaders[model_name])
         if print_metrics:
-            binary_classification_metrics(outputs, labels)
+            print(f'{model_name}:')
+        metrics, outputs, labels = model.evaluate(data_loaders[model_name], verbose=print_metrics)
         roc_scores.append(
             outputs[:, 1])  # extract output column containing 2nd logit, which represents probability of the 1-class
         roc_labels.append(labels)
