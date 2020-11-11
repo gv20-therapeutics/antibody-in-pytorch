@@ -86,7 +86,7 @@ class Model(nn.Module):
             total_loss = 0
             for input in data_loader:
                 outputs_train = []
-                print(len(input))
+                # print(len(input))
                 features, labels = input
                 logps = self.forward(features)
                 loss = self.objective()
