@@ -18,6 +18,13 @@ full_seq_order = ['FW1-IMGT', 'CDR1-IMGT', 'FW2-IMGT', 'CDR2-IMGT', \
 AA_LS = 'ACDEFGHIKLMNPQRSTVWY'
 AA_GP = 'ACDEFGHIKLMNPQRSTVWY-'
 
+def str_reverse_index(str):
+    return {char:index for index, char in enumerate(str)}
+
+AA_LS_index = str_reverse_index(AA_LS)
+AA_GP_index = str_reverse_index(AA_GP)
+AA_GP_index[21] = '@'
+
 
 def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None, dtype=np.int):
 
@@ -40,7 +47,18 @@ def encode_index(data, aa_list=AA_GP, pad=False, gapped=True, max_len_local=None
                 temp = np.full(arr_create, -1, dtype=dtype)
                 seq_i = np.concatenate([seq_i,temp])
             X.append(seq_i)
+
     return X
+
+def decode_seq(X):
+    # np array of dim [batch_size, 1]
+    AAs = AA_GP + '@' # @ is fake position 22
+    seqs = []
+    for encoding in X:
+        seq = map(lambda index: AAs[index], encoding)
+        seq = ''.join(seq)
+        seqs.append(seq)
+    return seqs
 
 
 class OAS_Dataset(IterableDataset):
@@ -96,6 +114,7 @@ class OAS_Dataset(IterableDataset):
             if not self.gapped:
                 X = [item.replace('-', '') for item in X]
 
+
             if self.labels is None:
                 yield X
             else:
@@ -110,7 +129,7 @@ class OAS_Dataset(IterableDataset):
 
 class OAS_preload(Dataset):
 
-    def __init__(self, list_IDs, labels, input_type, gapped, seq_dir, species_type, pad, cdr_len=25, seq_len=None):
+    def __init__(self, list_IDs, labels, input_type, gapped, seq_dir, species_type, pad, cdr_len=25, one_hot=False, seq_len=None):
         '''
         To read all the data at once and feed into the Dataloader
         pad: Padding required (bool)
@@ -125,6 +144,7 @@ class OAS_preload(Dataset):
         self.seq_len = seq_len
         self.input = []
         self.output = []
+        self.one_hot = one_hot
 
         dataset = OAS_Dataset(list_IDs, labels, input_type, gapped, cdr_len=cdr_len, seq_dir=seq_dir)
         le = LabelEncoder()
@@ -143,6 +163,10 @@ class OAS_preload(Dataset):
 
     def __getitem__(self, idx):
         X = self.input[idx]
+        if self.one_hot:
+            X = torch.Tensor(X)
+            X = torch.nn.functional.one_hot(X.long(), 22)
+            X = X.float()
         y = self.output[idx]
 
         return X,y
@@ -151,7 +175,7 @@ def collate_fn(batch):
     return batch, [x for seq in batch for x in seq]
 
 def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=True,
-                    pad=False, batch_size=500, model_name='Wollacott2019', cdr_len=25, random_state=100,
+                    pad=False, dataset_size=50000, batch_size=500, model_name='Wollacott2019', cdr_len=25, random_state=100, one_hot=False,
                     seq_dir='AIPT/Benchmarks/OAS_dataset/data/seq_db/'):
     """
     Create the train and test df
@@ -205,9 +229,9 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     # generators
     # training_set = OAS_Dataset(partition['train'], labels, input_type, gapped, seq_dir=seq_dir)
     training_set = OAS_preload(partition['train'], labels_train, input_type, gapped, seq_dir=seq_dir,
-                               species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
+                               species_type=species_type, pad=pad, cdr_len=cdr_len, one_hot=True, seq_len=seq_len)
     testing_set = OAS_preload(partition['test'], labels_test, input_type, gapped, seq_dir=seq_dir,
-                              species_type=species_type, pad=pad, cdr_len=cdr_len, seq_len=seq_len)
+                              species_type=species_type, pad=pad, cdr_len=cdr_len, one_hot=True, seq_len=seq_len)
 
     # Balanced Sampler for the loader
     class_sample_count = []
@@ -217,7 +241,7 @@ def OAS_data_loader(index_file, output_field, input_type, species_type, gapped=T
     new_w = np.zeros(np.shape(training_set.output))
     for a in np.unique(training_set.output):
         new_w[training_set.output == a] = weights[a]
-    sample = torch.utils.data.sampler.WeightedRandomSampler(new_w, 50000)
+    sample = torch.utils.data.sampler.WeightedRandomSampler(new_w, dataset_size)
 
     # Train and test loaders
     if model_name == 'Wollacott2019':
