@@ -46,15 +46,14 @@ Run without any parameter will go through all the test() functions.
 
 ## Included deep learning studies
 
-1. Hu and Liu 2019, DeepBCR: Deep learning framework for cancer-type classification and binding affinity estimation using B cell receptor repertoires. [https://www.biorxiv.org/content/10.1101/731158v1]
-2. Mason et al. 2019, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
-3. Liu et al. 2019, Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
-4. Wollacott et al. 2019, Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
-5. Chen et al. 2020, Predicting Antibody Developability from Sequence using Machine Learning. [https://www.biorxiv.org/content/10.1101/2020.06.18.159798v1]
-6. Beshnova et al. 2020, De novo prediction of cancer-associated T cell receptors for noninvasive cancer detection. [https://stm.sciencemag.org/content/12/557/eaaz3738]
+1. Mason et al. 2019, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
+2. Liu et al. 2019, Antibody complementarity determining region design using high-capacity machine learning. [https://doi.org/10.1093/bioinformatics/btz895]
+3. Wollacott et al. 2019, Quantifying the nativeness of antibody sequences using long short-term memory networks. [https://academic.oup.com/peds/advance-article/doi/10.1093/protein/gzz031/5554642]
 
 ## Other deep learning studies
 
-1. Davidsen et al., Deep generative models for T cell receptor protein sequences. [https://elifesciences.org/articles/46935]
-2. Hu et al., ACME: pan-specific peptide–MHC class I binding prediction through attention-based deep neural networks. [https://academic.oup.com/bioinformatics/article-abstract/35/23/4946/5497763]
-3. Beshnova et al., De novo prediction of cancer-associated T cell receptors for noninvasive cancer detection. [https://stm.sciencemag.org/content/12/557/eaaz3738]
+1. Hu and Liu 2019, DeepBCR: Deep learning framework for cancer-type classification and binding affinity estimation using B cell receptor repertoires. [https://www.biorxiv.org/content/10.1101/731158v1]
+2. Davidsen et al. 2019, Deep generative models for T cell receptor protein sequences. [https://elifesciences.org/articles/46935]
+3. Hu et al. 2019, ACME: pan-specific peptide–MHC class I binding prediction through attention-based deep neural networks. [https://academic.oup.com/bioinformatics/article-abstract/35/23/4946/5497763]
+4. Chen et al. 2020, Predicting Antibody Developability from Sequence using Machine Learning. [https://www.biorxiv.org/content/10.1101/2020.06.18.159798v1]
+5. Beshnova et al. 2020, De novo prediction of cancer-associated T cell receptors for noninvasive cancer detection. [https://stm.sciencemag.org/content/12/557/eaaz3738]
