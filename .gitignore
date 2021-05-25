@@ -1,8 +1,0 @@
-.DS_Store
-__pycache__/
-AIPT.egg-info/
-build/
-dist/
-work/
-.idea/
-.ipynb_checkpoints/
