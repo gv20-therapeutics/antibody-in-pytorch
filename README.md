@@ -44,7 +44,7 @@ Run without any parameter will go through all the test() functions.
 * SAbDab [http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/]
 * cAb-Rep [https://cab-rep.c2b2.columbia.edu/tools/]
 
-## References
+## Included deep learning studies
 
 1. Hu and Liu 2019, DeepBCR: Deep learning framework for cancer-type classification and binding affinity estimation using B cell receptor repertoires. [https://www.biorxiv.org/content/10.1101/731158v1]
 2. Mason et al. 2019, Deep learning enables therapeutic antibody optimization in mammalian cells by deciphering high-dimensional protein sequence space. [https://www.biorxiv.org/content/10.1101/617860v3]
@@ -53,14 +53,8 @@ Run without any parameter will go through all the test() functions.
 5. Chen et al. 2020, Predicting Antibody Developability from Sequence using Machine Learning. [https://www.biorxiv.org/content/10.1101/2020.06.18.159798v1]
 6. Beshnova et al. 2020, De novo prediction of cancer-associated T cell receptors for noninvasive cancer detection. [https://stm.sciencemag.org/content/12/557/eaaz3738]
 
-## Related works
+## Other deep learning studies
 
 1. Davidsen et al., Deep generative models for T cell receptor protein sequences. [https://elifesciences.org/articles/46935]
 2. Hu et al., ACME: pan-specific peptide–MHC class I binding prediction through attention-based deep neural networks. [https://academic.oup.com/bioinformatics/article-abstract/35/23/4946/5497763]
-
-## Contributors (alphabetical order)
-
-* [Qingyang Ding](https://github.com/qid12)
-* [Suraj Gattani](https://github.com/suraj-gattani)
-* [Xihao Hu](https://github.com/huxihao)
-* [Yaowen Chen](https://github.com/achenge07)
+3. Beshnova et al., De novo prediction of cancer-associated T cell receptors for noninvasive cancer detection. [https://stm.sciencemag.org/content/12/557/eaaz3738]
